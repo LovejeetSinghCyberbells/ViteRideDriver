@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>ViteRide needs access to your photos to update your profile picture.</string>
+<key>NSCameraUsageDescription</key>
+<string>ViteRide needs camera access to take a profile picture.</string>
+
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -56,5 +62,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIAppFonts</key>
+<array>
+    <string>MaterialIcons.ttf</string>
+</array>
 </dict>
 </plist>
