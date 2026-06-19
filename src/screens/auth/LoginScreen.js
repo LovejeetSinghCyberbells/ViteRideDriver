@@ -1,17 +1,52 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Image, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Alert, Text, TouchableOpacity } from 'react-native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import CommonButton from '../../components/CommonButton';
 import CommonTextField from '../../components/CommonTextField';
 import colors from '../../common/Colors';
 import { useNavigation } from '@react-navigation/native';
-
+import { Login } from '../../app/features/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import Snackbar from '../../components/Snackbar';
 
 export default function LoginScreen() {
     const navigation = useNavigation();
+    const dispatch = useDispatch();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+
+
+    const handleLogin = async () => {
+
+        if (!email.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your email.' });
+            return;
+        }
+        if (!password.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter password.' });
+            return;
+        }
+        try {
+            const userData = {
+                "email": email.trim(),
+                "password": password.trim(),
+            }
+
+            const response = await dispatch(Login(userData)).unwrap();
+            console.log("Response : ", response);
+            if (response.status === 'success' || response.message) {
+                setSnack({ visible: true, type: 'success', title: 'Login Successfull!', message: 'Welcome Again to ViteRide.' });         
+            }
+        } catch (error) {
+            console.log("Error : ", error);
+            setSnack({ visible: true, type: 'error', title: 'Login failed', message: error ?? 'Failed to Login.' });
+        }
+
+    };
+
+
     return (
         <View style={styles.container}>
             <TouchableOpacity
@@ -48,7 +83,7 @@ export default function LoginScreen() {
                     color={colors.secondaryColor}
                     textColor={colors.primaryColor}
                     style={styles.button}
-                    onPress={() => console.log('Login pressed')}
+                    onPress={handleLogin}
                 />
                 <View style={{ height: 40 }} />
                 <Text style={styles.labelText}>
@@ -91,6 +126,10 @@ export default function LoginScreen() {
                     onPress={() => console.log('Continue with Apple pressed')}
                 />
             </View>
+            <Snackbar
+                {...snack}
+                onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
+            />
         </View>
     )
 }

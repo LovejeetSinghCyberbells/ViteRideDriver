@@ -17,6 +17,7 @@ const CommonTextField = ({
     autoCapitalize = 'none',
     style,
     inputStyle,
+        isEditable = true,
     ...props
 }) => {
     const [showPassword, setShowPassword] = useState(false);
@@ -25,6 +26,7 @@ const CommonTextField = ({
     return (
         <View style={[styles.container, style]}>
             <TextInput
+                editable={isEditable}
                 style={[styles.input, inputStyle]}
                 placeholder={placeholder}
                 placeholderTextColor={colors.lightGreyColor}

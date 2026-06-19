@@ -5,10 +5,13 @@ import CommonButton from '../../components/CommonButton';
 import CommonTextField from '../../components/CommonTextField';
 import colors from '../../common/Colors';
 import { useNavigation } from '@react-navigation/native';
-
+import { RegisterAccount } from '../../app/features/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import Snackbar from '../../components/Snackbar';
 
 export default function SignUpScreen() {
     const navigation = useNavigation();
+    const dispatch = useDispatch();
 
     const [step, setStep] = useState(1);
     const [email, setEmail] = useState('');
@@ -21,17 +24,93 @@ export default function SignUpScreen() {
     const [vehicleYear, setVehicleYear] = useState('');
     const [licencePlate, setLicencePlate] = useState('');
     const [checkPrivacyAndTerms, setCheckPrivacyAndTerms] = useState(false);
+    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+
 
     const handleTermsCheck = () => {
         setCheckPrivacyAndTerms(!checkPrivacyAndTerms);
     };
 
-    const handleSubmit = () => {
-        if(step === 1){
+    const handleSubmit = async () => {
+        if (step === 1) {
+            if (!name.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your name.' });
+                return;
+            }
+            if (!email.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your email.' });
+                return;
+            }
+            if (!phone.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your phone number.' });
+
+                return;
+            }
+            if (!password.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter password.' });
+                return;
+            }
+            if (!confirmPassword.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please confirm password.' });
+                return;
+            }
+            if (password !== confirmPassword) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Passwords do not match.' });
+                return;
+            }
             setStep(2);
             return;
         }
-        if (!checkPrivacyAndTerms) return;
+        if (step === 2) {
+            if (!vehicleMake.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please Vehicle company name.' });
+                return;
+            }
+            if (!vehicleModel.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please Vehicle model.' });
+                return;
+            }
+            if (!vehicleYear.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please Vehicle year.' });
+                return;
+            }
+            if (!licencePlate.trim()) {
+                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle license plate number.' });
+                return;
+            }
+        }
+
+        if (!checkPrivacyAndTerms) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Please accept the privacy policy first.' });
+            return;
+        }
+
+        try {
+            const userData = {
+                "name": name.trim(),
+                "email": email.trim(),
+                "phone": phone.trim(),
+                "password": password.trim(),
+                "confirmPassword": confirmPassword.trim(),
+                "vehicleMake": vehicleMake.trim(),
+                "vehicleModel": vehicleModel.trim(),
+                "vehicleYear": vehicleYear.trim(),
+                "licensePlate": licencePlate.trim(),
+                "vehicleType": "Sedan",
+                "vehicleColor": "Black",
+            }
+
+            const response = await dispatch(RegisterAccount(userData)).unwrap();
+            if (response.status === 200 || response.status === 201) {
+                setSnack({ visible: true, type: 'success', title: 'Registeration Successfull!', message: 'Welcome to ViteRide.' });
+
+                navigation.replace('Login');
+            }
+
+        } catch (error) {
+            setSnack({ visible: true, type: 'error', title: 'Registration failed', message: error ?? 'Failed to register.' });
+        }
+
     };
 
     return (
@@ -99,7 +178,7 @@ export default function SignUpScreen() {
                     {step === 2 && (
                         <View>
                             <CommonTextField
-                                placeholder="Vehicle Make"
+                                placeholder="Vehicle Company"
                                 value={vehicleMake}
                                 onChangeText={setVehicleMake}
                             />
@@ -126,7 +205,7 @@ export default function SignUpScreen() {
 
                             <View style={{ flexDirection: 'row', gap: 10 }}>
                                 <TouchableOpacity
-                                    onPress={() => setCheckPrivacyAndTerms(prev => !prev)}
+                                    onPress={handleTermsCheck}
                                 >
                                     <View style={{
                                         width: 25,
@@ -156,7 +235,7 @@ export default function SignUpScreen() {
                         color={colors.secondaryColor}
                         textColor={colors.primaryColor}
                         style={styles.button}
-                        onPress={step === 2 ? handleSubmit : () => setStep(2)}
+                        onPress={handleSubmit}
                     />
                 </View>
                 <Text style={styles.labelText}>
@@ -169,6 +248,10 @@ export default function SignUpScreen() {
                     </Text>
                 </Text>
             </View>
+            <Snackbar
+                {...snack}
+                onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
+            />
         </View>
     );
 }

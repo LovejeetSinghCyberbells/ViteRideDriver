@@ -54,7 +54,8 @@ const SAMPLE_REVIEWS = [
     },
 ];
 
-export default function MyDetailsScreen({ navigation }) {
+export default function MyDetailsScreen({ navigation, route }) {
+    const { profile, reviews } = route.params; 
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -77,8 +78,8 @@ export default function MyDetailsScreen({ navigation }) {
                             style={styles.profileImage}
                         />
                     </View>
-                    <Text style={styles.profileName}>Jenny Nolan</Text>
-                    <Text style={styles.profileInfo}>Jenny@gmail.com</Text>
+                    <Text style={styles.profileName}>{profile.name} </Text>
+                    <Text style={styles.profileInfo}>{profile.email}</Text>
                     <Text style={styles.profileInfo}>+91 8256709876</Text>
                 </View>
 
@@ -90,7 +91,7 @@ export default function MyDetailsScreen({ navigation }) {
                     isIcon={true}
                     iconColor={colors.whiteColor}
                     icon={'edit'}
-                    onPress={()=>{navigation.navigate('EditProfileScreen')}}
+                    onPress={()=>{navigation.navigate('EditProfileScreen',{profile})}}
                 />
 
                 <View style={styles.sectionHeader}>

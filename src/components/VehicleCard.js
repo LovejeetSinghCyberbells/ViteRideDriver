@@ -1,16 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Text, Image } from 'react-native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../common/Colors';
-
+import CommonToggleSwitch from '../components/CommonToggleSwitch';
+import { ActiveToggleVehicle } from '../app/features/vehicleSlice';
+import { useDispatch, useSelector } from 'react-redux';
 export default function VehicleCard({ vehicle }) {
-    const {
-        vehicleType,
-        carNo,
-        vehicleCompany,
-        vehicleModel,
-        vehiclePhoto,
-    } = vehicle;
+    const { vehicleType, licensePlate, make, model, color, isActive, _id, vehiclePhoto } = vehicle;
+    const [enabled, setEnabled] = useState(isActive);
+    const dispatch = useDispatch();
+    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+
+    const handleActivateVehicle = async () => {
+        setEnabled(true);
+        try {
+            const response = await dispatch(ActiveToggleVehicle(_id)).unwrap();
+            console.log("Response : ", response);
+            if (response.status === 'success' || response.message) {
+                setSnack({ visible: true, type: 'success', title: 'Vehicle Activated Successfully!', message: 'Your vehicle activated successfully.' });
+            }
+        } catch (error) {
+            console.log("Error : ", error);
+            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to change activate vehicle.' });
+        }
+
+    };
 
     return (
         <View style={styles.card}>
@@ -25,23 +39,12 @@ export default function VehicleCard({ vehicle }) {
 
                 <View style={styles.vehicleInfo}>
                     <Text style={styles.vehicleName}>
-                        {vehicleCompany} {vehicleModel}
+                        {make} {model}
                     </Text>
                     <Text style={styles.vehicleType}>{vehicleType}</Text>
                 </View>
 
-                <View style={styles.typeBadge}>
-                    <MaterialDesignIcons
-                        name={
-                            vehicleType?.toLowerCase() === 'bike' ? 'two-wheeler' :
-                            vehicleType?.toLowerCase() === 'suv' ? 'airport-shuttle' :
-                            'directions-car'
-                        }
-                        size={14}
-                        color={colors.secondaryColor}
-                    />
-                    <Text style={styles.typeBadgeText}>{vehicleType}</Text>
-                </View>
+                <CommonToggleSwitch value={enabled} onValueChange={handleActivateVehicle} />
             </View>
 
             <View style={styles.divider} />
@@ -50,7 +53,7 @@ export default function VehicleCard({ vehicle }) {
                 <MaterialDesignIcons name="confirmation-number" size={16} color={'rgba(255,255,255,0.4)'} />
                 <Text style={styles.plateLabel}>Plate Number</Text>
                 <View style={styles.plateBadge}>
-                    <Text style={styles.plateText}>{carNo}</Text>
+                    <Text style={styles.plateText}>{licensePlate}</Text>
                 </View>
             </View>
         </View>

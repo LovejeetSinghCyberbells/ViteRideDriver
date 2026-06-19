@@ -1,8 +1,10 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../../common/Colors';
+import { GetProfile } from '../../app/features/profileSlice';
+import { useDispatch, useSelector } from 'react-redux';
 
 const APP_SETTINGS = [
     {
@@ -40,13 +42,42 @@ const AppSettingCard = ({ icon, title }) => {
 };
 
 export default function ProfileScreen({ navigation }) {
+    const dispatch = useDispatch();
+    const { profile, reviews, loading, error } = useSelector((state) => state.profile);
+    
+
+
+    useEffect(() => {
+        dispatch(GetProfile());
+    }, [dispatch]);
+
+
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.safeArea}>
+                <ActivityIndicator size="large" color={colors.blueColor} style={{ flex: 1 }} />
+            </SafeAreaView>
+        );
+    }
+
+    if (error) {
+        return (
+            <SafeAreaView style={styles.safeArea}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: colors.redColor }}>{error}</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+
     return (
         <SafeAreaView style={styles.safeArea} edges={'bottom'}>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <TouchableOpacity onPress={() => { navigation.navigate('MyDetailsScreen') }} style={styles.profileCard} activeOpacity={0.8}>
+                <TouchableOpacity onPress={() => { navigation.navigate('MyDetailsScreen',{profile,reviews}) }} style={styles.profileCard} activeOpacity={0.8}>
                     <View style={styles.profileLeft}>
                         <View style={styles.profileImageContainer}>
                             <MaterialDesignIcons
@@ -57,9 +88,9 @@ export default function ProfileScreen({ navigation }) {
                         </View>
 
                         <View style={styles.profileInfo}>
-                            <Text style={styles.profileName}>John Driver</Text>
-                            <Text style={styles.profileEmail}>john.driver@email.com</Text>
-                            <Text style={styles.profileRating}>⭐️ 4.9 (248 trips)</Text>
+                            <Text style={styles.profileName}>{profile.name ?? 'user'} </Text>
+                            <Text style={styles.profileEmail}>{profile.email ?? 'user@gmail.com'}</Text>
+                            <Text style={styles.profileRating}>⭐️{reviews.averageRating ?? 0} ({reviews.totalReviews ?? 0} reviews)</Text>
                         </View>
                     </View>
 

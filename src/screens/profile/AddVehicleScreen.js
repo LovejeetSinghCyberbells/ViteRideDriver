@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -6,10 +6,35 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../../common/Colors';
 import CommonButton from '../../components/CommonButton';
 import CommonTextField from '../../components/CommonTextField';
+import { AddVehicle, EditVehicle } from '../../app/features/vehicleSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import Snackbar from '../../components/Snackbar';
 
-export default function AddVehicleScreen({ navigation }) {
+export default function AddVehicleScreen({ navigation, route }) {
+    const { isEdit = false, vehicle = null } = route.params ?? {};
+    const dispatch = useDispatch();
     const [vehicleImage, setVehicleImage] = useState(null);
     const [showImageOptions, setShowImageOptions] = useState(false);
+    const [vehicleCompany, setVehicleCompany] = useState(null);
+    const [vehicleModel, setVehicleModel] = useState(null);
+    const [vehicleType, setVehicleType] = useState(null);
+    const [plateNumber, setPlateNumber] = useState(null);
+    const [vehicleColor, setVehicleColor] = useState(null);
+    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+
+    useEffect(() => {
+        console.log("Vehicle from edit screen :", vehicle);
+        console.log("Vehicle from edit screen :", isEdit);
+
+        if (vehicle) {
+            setVehicleCompany(vehicle.make);
+            setVehicleModel(vehicle.model);
+            setVehicleType(vehicle.vehicleType);
+            setPlateNumber(vehicle.licensePlate);
+            setVehicleColor(vehicle.color);
+        }
+    }, [vehicle, isEdit]);
+
 
     const handleEditImage = () => setShowImageOptions(true);
 
@@ -41,13 +66,105 @@ export default function AddVehicleScreen({ navigation }) {
         }, 300);
     };
 
+    const handleEditVehicle = async () => {
+
+        if (!vehicleCompany.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle company.' });
+            return;
+        }
+        if (!vehicleModel.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle model.' });
+            return;
+        }
+        if (!vehicleType.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle type (Sedan, Suv etc.).' });
+            return;
+        }
+        if (!plateNumber.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle plate number.' });
+            return;
+        }
+
+        if (!vehicleColor.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle color.' });
+            return;
+        }
+        try {
+            const vehicleData = {
+                "make": vehicleCompany,
+                "model": vehicleModel,
+                "vehicleType": vehicleType,
+                "licensePlate": plateNumber,
+                "color": vehicleColor
+            }
+
+            console.log("vehicleData : ", vehicleData);
+            const response = await dispatch(EditVehicle({ vehicleData, id: vehicle._id })).unwrap();
+            console.log("Response : ", response);
+            if (response.status === 'success' || response.message) {
+                setSnack({ visible: true, type: 'success', title: 'Vehicle Edited Successfully!', message: 'Your vehicle edited successfully.' });
+                navigation.goBack();
+            }
+        } catch (error) {
+            console.log("Error : ", error);
+            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to Edit Vehicle.' });
+        }
+
+    };
+
+    const handleAddVehicle = async () => {
+
+        if (!vehicleCompany.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle company.' });
+            return;
+        }
+        if (!vehicleModel.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle model.' });
+            return;
+        }
+        if (!vehicleType.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle type (Sedan, Suv etc.).' });
+            return;
+        }
+        if (!plateNumber.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle plate number.' });
+            return;
+        }
+
+        if (!vehicleColor.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle color.' });
+            return;
+        }
+        try {
+            const vehicleData = {
+                "make": vehicleCompany,
+                "model": vehicleModel,
+                "vehicleType": vehicleType,
+                "licensePlate": plateNumber,
+                "color": vehicleColor
+            }
+
+            console.log("vehicleData : ", vehicleData);
+            const response = await dispatch(AddVehicle(vehicleData)).unwrap();
+            console.log("Response : ", response);
+            if (response.status === 'success' || response.message) {
+                setSnack({ visible: true, type: 'success', title: 'Vehicle Added Successfully!', message: 'Your vehicle added successfully.' });
+                navigation.goBack();
+            }
+        } catch (error) {
+            console.log("Error : ", error);
+            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to Add Vehicle.' });
+        }
+
+    };
+
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
             <View style={styles.screenHeader}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <MaterialDesignIcons name="arrow-back-ios" size={24} color={colors.whiteColor} />
                 </TouchableOpacity>
-                <Text style={styles.screenTitle}>Add Vehicle</Text>
+                <Text style={styles.screenTitle}>{isEdit ? "Edit Vehicle" : "Add Vehicle"}</Text>
                 <View style={styles.headerSpacer} />
             </View>
 
@@ -74,34 +191,35 @@ export default function AddVehicleScreen({ navigation }) {
 
                 <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>Vehicle Company</Text>
-                    <CommonTextField placeholder={'e.g. Toyota, Honda'} />
+                    <CommonTextField placeholder={'e.g. Toyota, Honda'} value={vehicleCompany} onChangeText={setVehicleCompany} isEditable={!isEdit} />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Vehicle Model</Text>
-                    <CommonTextField placeholder={'e.g. Camry, CR-V'} />
+                    <CommonTextField placeholder={'e.g. Camry, CR-V'} value={vehicleModel} onChangeText={setVehicleModel} isEditable={!isEdit} />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Vehicle Type</Text>
-                    <CommonTextField placeholder={'e.g. Sedan, SUV, Bike'} />
+                    <CommonTextField placeholder={'e.g. Sedan, SUV, Bike'} value={vehicleType} onChangeText={setVehicleType} isEditable={!isEdit} />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Plate Number</Text>
-                    <CommonTextField placeholder={'e.g. LG 234 ABC'} />
+                    <CommonTextField placeholder={'e.g. LG 234 ABC'} value={plateNumber} onChangeText={setPlateNumber} isEditable={!isEdit} />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Vehicle Color</Text>
-                    <CommonTextField placeholder={'e.g. Black, White, Silver'} />
+                    <CommonTextField placeholder={'e.g. Black, White, Silver'} value={vehicleColor} onChangeText={setVehicleColor} />
                 </View>
 
                 <CommonButton
-                    title={'Add Vehicle'}
+                    title={isEdit ? 'Edit Vehicle' : 'Add Vehicle'}
                     textColor={colors.whiteColor}
                     color={colors.secondaryColor}
                     style={styles.submitButton}
+                    onPress={isEdit ? handleEditVehicle : handleAddVehicle}
                 />
             </ScrollView>
 
@@ -112,14 +230,14 @@ export default function AddVehicleScreen({ navigation }) {
                 onRequestClose={() => setShowImageOptions(false)}
             >
                 <Pressable style={styles.alertOverlay} onPress={() => setShowImageOptions(false)}>
-                    <Pressable style={styles.alertBox} onPress={() => {}}>
+                    <Pressable style={styles.alertBox} onPress={() => { }}>
 
                         <View style={styles.alertIconCircle}>
                             <MaterialDesignIcons name="add-a-photo" size={26} color={colors.primaryColor} />
                         </View>
 
-                        <Text style={styles.alertTitle}>Add Vehicle Photo</Text>
-                        <Text style={styles.alertSubtitle}>Choose how you'd like to add your vehicle picture</Text>
+                        <Text style={styles.alertTitle}>{isEdit ? 'Edit' : 'Add'} Vehicle Photo</Text>
+                        <Text style={styles.alertSubtitle}>Choose how you'd like to {isEdit ? 'edit' : 'add'} your vehicle picture</Text>
 
                         <View style={styles.alertDivider} />
 
@@ -151,6 +269,10 @@ export default function AddVehicleScreen({ navigation }) {
                     </Pressable>
                 </Pressable>
             </Modal>
+            <Snackbar
+                {...snack}
+                onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
+            />
         </SafeAreaView>
     );
 }

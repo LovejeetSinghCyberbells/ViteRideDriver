@@ -3,6 +3,10 @@ import { StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { enableScreens } from 'react-native-screens';
+import store from './src/app/store';
+import { Provider } from 'react-redux';
+
+
 enableScreens();
 
 function App() {
@@ -10,12 +14,14 @@ function App() {
 
     return (
         <SafeAreaProvider>
-            <StatusBar 
-                barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
-                backgroundColor="transparent" 
-                translucent 
+            <StatusBar
+                barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+                backgroundColor="transparent"
+                translucent
             />
-            <RootNavigator />
+            <Provider store={store} >
+                <RootNavigator />
+            </Provider>
         </SafeAreaProvider>
     );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -6,10 +6,32 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../../common/Colors';
 import CommonButton from '../../components/CommonButton';
 import CommonTextField from '../../components/CommonTextField';
+import Snackbar from '../../components/Snackbar';
+import { EditProfile } from '../../app/features/profileSlice';
+import { useDispatch, useSelector } from 'react-redux';
 
-export default function EditProfileScreen({ navigation }) {
+export default function EditProfileScreen({ navigation, route }) {
+    const { profile } = route.params;
+    const dispatch = useDispatch();
     const [profileImage, setProfileImage] = useState(null);
     const [showImageOptions, setShowImageOptions] = useState(false);
+    const [name, setName] = useState(null);
+    const [email, setEmail] = useState(null);
+    const [phone, setPhone] = useState(null);
+    const [address, setAddress] = useState(null);
+    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+
+
+    useEffect(() => {
+        console.log("Profile from edit screen :", profile);
+        if (profile) {
+            setName(profile.name);
+            setEmail(profile.email);
+            setPhone(profile.phone);
+            setAddress(profile.address);
+            setProfileImage(profile.profilePicture);
+        }
+    }, [profile]);
 
     const handleEditImage = () => setShowImageOptions(true);
 
@@ -39,6 +61,46 @@ export default function EditProfileScreen({ navigation }) {
                 }
             );
         }, 300);
+    };
+
+    const handleEditProfile = async () => {
+
+        if (!name.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your name.' });
+            return;
+        }
+        if (!email.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your email address.' });
+            return;
+        }
+        if (!phone.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your phone number.' });
+            return;
+        }
+        if (!profileImage.trim()) {
+            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your profile Image.' });
+            return;
+        }
+        try {
+            const userData = {
+                "name": name.trim(),
+                "email": email.trim(),
+                "profilePicture": profileImage,
+                "phone": phone
+            }
+
+            console.log("UserData : ",userData);
+            const response = await dispatch(EditProfile(userData)).unwrap();
+            console.log("Response : ", response);
+            if (response.status === 'success' || response.message) {
+                setSnack({ visible: true, type: 'success', title: 'Profile Edited Successfully!', message: 'Your profile was edietd successfully.' });
+                navigation.goBack();
+            }
+        } catch (error) {
+            console.log("Error : ", error);
+            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to Edit Profile.' });
+        }
+
     };
 
     return (
@@ -73,22 +135,22 @@ export default function EditProfileScreen({ navigation }) {
 
                 <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>Full Name</Text>
-                    <CommonTextField placeholder={'Please Enter Your Name.'} />
+                    <CommonTextField placeholder={'Please Enter Your Name.'} value={name} onChangeText={setName} />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Email</Text>
-                    <CommonTextField placeholder={'Please Enter Your Email.'} />
+                    <CommonTextField placeholder={'Please Enter Your Email.'} value={email} onChangeText={setEmail} />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Mobile Number</Text>
-                    <CommonTextField placeholder={'Please Enter Your Mobile Number.'} />
+                    <CommonTextField placeholder={'Please Enter Your Mobile Number.'} value={phone} onChangeText={setPhone} />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Address</Text>
-                    <CommonTextField placeholder={'Please Enter Your Address.'} />
+                    <CommonTextField placeholder={'Please Enter Your Address.'} value={address} onChangeText={setAddress} />
                 </View>
 
                 <CommonButton
@@ -96,6 +158,7 @@ export default function EditProfileScreen({ navigation }) {
                     textColor={colors.whiteColor}
                     color={colors.secondaryColor}
                     style={styles.submitButton}
+                    onPress={handleEditProfile}
                 />
             </ScrollView>
 
@@ -145,6 +208,10 @@ export default function EditProfileScreen({ navigation }) {
                     </Pressable>
                 </Pressable>
             </Modal>
+            <Snackbar
+                {...snack}
+                onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
+            />
         </SafeAreaView>
     );
 }

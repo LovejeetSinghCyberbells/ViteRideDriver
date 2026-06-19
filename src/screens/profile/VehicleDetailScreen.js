@@ -1,20 +1,18 @@
-import React, { useState } from 'react';
+import React,{useState} from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../../common/Colors';
 import CommonButton from '../../components/CommonButton';
+import { useDispatch, useSelector } from 'react-redux';
+import Snackbar from '../../components/Snackbar';
+import { DeleteVehicle } from '../../app/features/vehicleSlice';
 
 export default function VehicleDetailScreen({ navigation, route }) {
     const { vehicle } = route.params;
-    const {
-        vehicleType,
-        carNo,
-        vehicleCompany,
-        vehicleModel,
-        vehiclePhoto,
-        vehicleColor,
-    } = vehicle;
+    const { vehicleType, licensePlate, make, model, color, isActive, _id, vehiclePhoto } = vehicle;
+    const dispatch = useDispatch();
+    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
 
     const getVehicleIcon = () => {
         const type = vehicleType?.toLowerCase();
@@ -22,6 +20,22 @@ export default function VehicleDetailScreen({ navigation, route }) {
         if (type === 'suv') return 'airport-shuttle';
         return 'directions-car';
     };
+
+     const handleDeleteVehicle = async () => {
+            try {
+                const response = await dispatch(DeleteVehicle(_id)).unwrap();
+                console.log("Response : ", response);
+                if (response.status === 'success' || response.message) {
+                    setSnack({ visible: true, type: 'success', title: 'Vehicle Deleted Successfully!', message: 'Your vehicle deleted successfully.' });
+                    navigation.goBack();
+                }
+            } catch (error) {
+                console.log("Error : ", error);
+                setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to delete vehicle.' });
+            }
+    
+        };
+    
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -54,9 +68,9 @@ export default function VehicleDetailScreen({ navigation, route }) {
 
                 {/* Vehicle Name */}
                 <View style={styles.nameSection}>
-                    <Text style={styles.vehicleName}>{vehicleCompany} {vehicleModel}</Text>
+                    <Text style={styles.vehicleName}>{make} {model}</Text>
                     <View style={styles.platePill}>
-                        <Text style={styles.platePillText}>{carNo}</Text>
+                        <Text style={styles.platePillText}>{licensePlate}</Text>
                     </View>
                 </View>
 
@@ -67,7 +81,7 @@ export default function VehicleDetailScreen({ navigation, route }) {
                             <MaterialDesignIcons name="business" size={18} color={colors.secondaryColor} />
                         </View>
                         <Text style={styles.infoLabel}>Company</Text>
-                        <Text style={styles.infoValue}>{vehicleCompany}</Text>
+                        <Text style={styles.infoValue}>{make}</Text>
                     </View>
 
                     <View style={styles.infoCard}>
@@ -75,7 +89,7 @@ export default function VehicleDetailScreen({ navigation, route }) {
                             <MaterialDesignIcons name="directions-car" size={18} color={colors.secondaryColor} />
                         </View>
                         <Text style={styles.infoLabel}>Model</Text>
-                        <Text style={styles.infoValue}>{vehicleModel}</Text>
+                        <Text style={styles.infoValue}>{model}</Text>
                     </View>
 
                     <View style={styles.infoCard}>
@@ -91,7 +105,7 @@ export default function VehicleDetailScreen({ navigation, route }) {
                             <MaterialDesignIcons name="palette" size={18} color={colors.secondaryColor} />
                         </View>
                         <Text style={styles.infoLabel}>Color</Text>
-                        <Text style={styles.infoValue}>{vehicleColor ?? 'N/A'}</Text>
+                        <Text style={styles.infoValue}>{color ?? 'N/A'}</Text>
                     </View>
                 </View>
 
@@ -103,7 +117,7 @@ export default function VehicleDetailScreen({ navigation, route }) {
                         </View>
                         <View style={styles.detailTextGroup}>
                             <Text style={styles.detailLabel}>Plate Number</Text>
-                            <Text style={styles.detailValue}>{carNo}</Text>
+                            <Text style={styles.detailValue}>{licensePlate}</Text>
                         </View>
                         <View style={styles.verifiedBadge}>
                             <MaterialDesignIcons name="verified" size={14} color={colors.greenColor} />
@@ -120,22 +134,43 @@ export default function VehicleDetailScreen({ navigation, route }) {
                         </View>
                         <View style={styles.detailTextGroup}>
                             <Text style={styles.detailLabel}>Status</Text>
-                            <Text style={styles.detailValue}>Active</Text>
+                            <Text style={styles.detailValue}>{isActive ? 'Active' : 'Inactive'}</Text>
                         </View>
-                        <View style={styles.activeBadge}>
-                            <View style={styles.activeDot} />
-                            <Text style={styles.activeText}>In Use</Text>
+                        <View style={[styles.activeBadge, !isActive && styles.inactiveBadge]}>
+                            <View style={[styles.activeDot, !isActive && styles.inactiveDot]} />
+                            <Text style={[styles.activeText, !isActive && styles.inactiveText]}>
+                                {isActive ? 'In Use' : 'Not In Use'}
+                            </Text>
                         </View>
                     </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center', justifyContent: 'center' }}>
-                    <CommonButton title={'Remove Vehicle'} textColor={colors.redColor} color={colors.lightRedColor} isIcon={true}
-                        icon={'delete'} iconColor={colors.redColor} style={{ width: '48%' }} />
-                    <CommonButton title={'Edit Vehicle'} textColor={colors.whiteColor} color={colors.secondaryColor} isIcon={true}
-                        icon={'edit'} iconColor={colors.whiteColor} style={{ width: '48%' }} onPress={()=>{navigation.navigate('AddVehicleScreen')}}/>
+                <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
+                    <CommonButton
+                        title={'Remove Vehicle'}
+                        textColor={colors.redColor}
+                        color={colors.lightRedColor}
+                        isIcon={true}
+                        icon={'delete'}
+                        iconColor={colors.redColor}
+                        onPress={handleDeleteVehicle}
+                        style={{ width: '48%' }}
+                    />
+                    <CommonButton
+                        title={'Edit Vehicle'}
+                        textColor={colors.whiteColor}
+                        color={colors.secondaryColor}
+                        isIcon={true}
+                        icon={'edit'}
+                        iconColor={colors.whiteColor}
+                        style={{ width: '48%' }}
+                        onPress={() => navigation.navigate('AddVehicleScreen', { vehicle, isEdit: true })}
+                    />
                 </View>
-
+<Snackbar
+                {...snack}
+                onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
+            />
             </ScrollView>
         </SafeAreaView>
     );
@@ -344,21 +379,13 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: colors.blueColor,
     },
-
-    // Delete
-    deleteButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        marginTop: 12,
+    inactiveBadge: {
         backgroundColor: colors.lightRedColor,
-        borderRadius: 14,
-        paddingVertical: 14,
     },
-    deleteText: {
-        fontSize: 15,
-        fontWeight: '500',
+    inactiveDot: {
+        backgroundColor: colors.redColor,
+    },
+    inactiveText: {
         color: colors.redColor,
     },
 });
