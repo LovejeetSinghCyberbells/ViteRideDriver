@@ -2,10 +2,12 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
     RegistrationAccountService,
     LoginService,
+    LogoutService
 } from '../../api/service';
 import {
     getUserData,
     saveUserData,
+    clearUserData,
 } from '../../units/asyncStorageManager';
 
 export const RegisterAccount = createAsyncThunk(
@@ -46,7 +48,7 @@ export const Login = createAsyncThunk(
                     status: response?.status ?? null,
                 });
             }
-console.log("Auth Slice  : ", response)
+            console.log("Auth Slice  : ", response)
             await saveUserData(response);
 
             return response.data;
@@ -58,6 +60,25 @@ console.log("Auth Slice  : ", response)
                     'Login failed.',
                 status: error?.response?.status ?? null,
             });
+        }
+    }
+);
+
+export const Logout = createAsyncThunk(
+    'auth/Logout',
+    async (_, { rejectWithValue }) => {
+        try {
+            await LogoutService();
+
+            await clearUserData();
+
+            return true;
+        } catch (error) {
+            await clearUserData();
+
+            return rejectWithValue(
+                error?.response?.data?.message || 'Logout failed'
+            );
         }
     }
 );
@@ -112,7 +133,6 @@ const authSlice = createSlice({
             state.message = null;
         },
     },
-
     extraReducers: builder => {
         builder
 
@@ -177,6 +197,14 @@ const authSlice = createSlice({
                 state.token = null;
                 state.error =
                     action.payload?.message || 'Failed to load session.';
+            })
+
+            .addCase(Logout.fulfilled, state => {
+                state.isLoggedIn = false;
+                state.user = null;
+                state.token = null;
+                state.error = null;
+                state.message = null;
             });
     },
 });

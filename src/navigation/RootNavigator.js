@@ -1,10 +1,10 @@
-import React,{useEffect} from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import BottomTabs from './BottomBar';
 import AuthNavigator from './AuthNavigator';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadInitialState } from '../app/features/authSlice';
-import {StyleSheet,View,ActivityIndicator} from 'react-native';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 
 const RootNavigator = () => {
     const dispatch = useDispatch();
@@ -12,8 +12,12 @@ const RootNavigator = () => {
 
     useEffect(() => {
         dispatch(loadInitialState());
-        console.log("Token form root :" ,token);
     }, [dispatch]);
+
+    useEffect(() => {
+        console.log('Token from root:', token);
+        console.log('isLoggedIn:', isLoggedIn);
+    }, [token, isLoggedIn]);
 
     if (mainloading) {
         return (
@@ -23,18 +27,13 @@ const RootNavigator = () => {
         );
     }
 
-    if (isLoggedIn && token) {
-        return (
-            <NavigationContainer>
-                <BottomTabs />
-            </NavigationContainer>
-        );
-    }
-
     return (
-
         <NavigationContainer>
-            <AuthNavigator />
+            {isLoggedIn && token ? (
+                <BottomTabs />
+            ) : (
+                <AuthNavigator />
+            )}
         </NavigationContainer>
     );
 };

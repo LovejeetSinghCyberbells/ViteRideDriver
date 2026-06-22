@@ -77,4 +77,8 @@ export const ActiveToggleVehicleApi = ( id) => {
 
 export const DeleteVehicleApi = ( id) => {
     return axiosInstance.delete(API_ROUTES.DELETE_VEHICLE(id));
-};
+}
+
+export const LogoutApi = () => {
+    return axiosInstance.post(API_ROUTES.LOGOUT);
+}

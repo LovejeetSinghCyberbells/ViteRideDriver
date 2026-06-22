@@ -15,6 +15,7 @@ import { GetProfile } from '../../app/features/profileSlice';
 import { logout } from '../../app/features/authSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import Snackbar from '../../components/Snackbar';
+import { clearUserData } from '../../units/asyncStorageManager';
 
 const APP_SETTINGS = [
     { icon: 'settings', title: 'App Preferences' },
@@ -77,8 +78,14 @@ export default function ProfileScreen({ navigation }) {
         fetchProfile();
     }, []);
 
-    const handleLogout = () => {
-        dispatch(logout());
+
+    const handleLogout = async () => {
+        try {
+            await clearUserData();
+            dispatch(logout());
+        } catch (error) {
+            console.log('Logout Error:', error);
+        }
     };
 
     const activeVehicle = profile?.activeVehicle;
@@ -181,7 +188,7 @@ export default function ProfileScreen({ navigation }) {
                             key={index}
                             icon={setting.icon}
                             title={setting.title}
-                            onPress={() => {}}
+                            onPress={() => { }}
                         />
                     ))}
 

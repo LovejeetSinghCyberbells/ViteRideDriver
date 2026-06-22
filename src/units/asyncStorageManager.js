@@ -38,10 +38,10 @@ export const getUserData = async () => {
 };
 
 export const clearUserData = async () => {
-  try {
-    await AsyncStorage.removeItem('user');
-    await AsyncStorage.removeItem('token');
-  } catch (error) {
-    console.log('Error clearing user data:', error);
-  }
+    try {
+        await AsyncStorage.removeItem('user');
+        await AsyncStorage.removeItem('token');
+    } catch (error) {
+        console.log('Error clearing user data:', error);
+    }
 };

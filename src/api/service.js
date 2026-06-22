@@ -1,7 +1,7 @@
 import {
     RegistrationAccountApi, LoginApi, GetProfileApi, EditProfileApi,
     GetAllVehicleApi, AddVehicleApi, EditVehicleApi, ActiveToggleVehicleApi,
-    DeleteVehicleApi
+    DeleteVehicleApi,LogoutApi
 } from './api';
 
 const handleApiError = (error, serviceName) => {
@@ -98,5 +98,14 @@ export const DeleteVehicleService = async id => {
         return response;
     } catch (error) {
         return handleApiError(error, 'DeleteVehicleService');
+    }
+};
+
+export const LogoutService = async () => {
+    try {
+        const response = await LogoutApi();
+        return response;
+    } catch (error) {
+        return handleApiError(error, 'LogoutService');
     }
 };

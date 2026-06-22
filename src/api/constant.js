@@ -7,5 +7,6 @@ export const API_ROUTES = {
     ADD_VEHICLE: 'driver/vehicles',
     EDIT_VEHICLE: (id) => `driver/vehicles/${id}`,
     ACTIVATE_VEHICLE: (id) => `driver/vehicles/${id}/activate`,
-    DELETE_VEHICLE: (id) => `driver/vehicles/${id}`
+    DELETE_VEHICLE: (id) => `driver/vehicles/${id}`,
+    LOGOUT : 'auth/logout',
 }
