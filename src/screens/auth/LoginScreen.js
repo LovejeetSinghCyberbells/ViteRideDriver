@@ -4,6 +4,7 @@ import {
     View,
     Text,
     TouchableOpacity,
+    Dimensions,
 } from 'react-native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -14,6 +15,12 @@ import { useNavigation } from '@react-navigation/native';
 import { Login } from '../../app/features/authSlice';
 import { useDispatch } from 'react-redux';
 import Snackbar from '../../components/Snackbar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width, height } = Dimensions.get('window');
+
+const wp = percentage => (width * percentage) / 100;
+const hp = percentage => (height * percentage) / 100;
 
 export default function LoginScreen() {
     const navigation = useNavigation();
@@ -56,25 +63,29 @@ export default function LoginScreen() {
             setLoading(true);
 
             const response = await dispatch(
-                Login({ email: email.trim(), password: password.trim() })
+                Login({
+                    email: email.trim(),
+                    password: password.trim(),
+                }),
             ).unwrap();
 
             if (response?.status === 'success' || response?.success) {
                 showSuccess(
                     response?.message || 'Welcome back to ViteRide.',
-                    'Login Successful!'
+                    'Login Successful!',
                 );
             } else {
                 showError(
                     response?.message || 'Something went wrong.',
-                    'Login Failed'
+                    'Login Failed',
                 );
             }
         } catch (error) {
             const message =
                 typeof error === 'string'
                     ? error
-                    : error?.message || 'Failed to login. Please try again.';
+                    : error?.message ||
+                    'Failed to login. Please try again.';
 
             showError(message, 'Login Failed');
         } finally {
@@ -83,157 +94,187 @@ export default function LoginScreen() {
     };
 
     return (
-        <KeyboardAwareScrollView
-            style={styles.screen}
-            contentContainerStyle={styles.container}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            enableOnAndroid
-            extraScrollHeight={30}
-            extraHeight={120}
+        <SafeAreaView
+            style={styles.safeArea}
+            edges={['top', 'left', 'right']}
         >
-            <TouchableOpacity
-                onPress={() => navigation.goBack()}
-                activeOpacity={0.8}
+            <KeyboardAwareScrollView
+                style={styles.screen}
+                contentContainerStyle={styles.container}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                enableOnAndroid
+                extraScrollHeight={30}
+                extraHeight={120}
             >
-                <MaterialDesignIcons
-                    name="chevron-left"
-                    size={40}
-                    color={colors.whiteColor}
-                    style={{ marginEnd: 10 }}
-                />
-            </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.8}
+                >
+                    <MaterialDesignIcons
+                        name="chevron-left"
+                        size={wp(10)}
+                        color={colors.whiteColor}
+                        style={{ marginEnd: 10 }}
+                    />
+                </TouchableOpacity>
 
-            <View style={styles.card}>
-                <Text style={styles.titleText}>Login your account</Text>
-                <Text style={styles.subTitleText}>
-                    Join millions of users today
-                </Text>
+                <View style={styles.card}>
+                    <Text style={styles.titleText}>Login your account</Text>
 
-                <View style={{ height: 40 }} />
-
-                <CommonTextField
-                    placeholder="Enter your email"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                />
-
-                <View style={{ height: 20 }} />
-
-                <CommonTextField
-                    placeholder="Enter your password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
-
-                <View style={{ height: 20 }} />
-
-                <CommonButton
-                    title="Login"
-                    color={colors.secondaryColor}
-                    textColor={colors.primaryColor}
-                    style={styles.button}
-                    onPress={handleLogin}
-                    loading={loading}
-                />
-
-                <View style={{ height: 40 }} />
-
-                <Text style={styles.labelText}>
-                    Don't have an account?{' '}
-                    <Text
-                        style={styles.labelHighlight}
-                        onPress={() => navigation.replace('SignUpScreen')}
-                    >
-                        Sign up
+                    <Text style={styles.subTitleText}>
+                        Join millions of users today
                     </Text>
-                </Text>
-            </View>
 
-            <View style={styles.divider}>
-                <View style={styles.orContainer}>
-                    <Text style={styles.orText}>or</Text>
+                    <View style={{ height: hp(5) }} />
+
+                    <CommonTextField
+                        placeholder="Enter your email"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+
+                    <View style={{ height: hp(2.5) }} />
+
+                    <CommonTextField
+                        placeholder="Enter your password"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry
+                    />
+
+                    <View style={{ height: hp(2.5) }} />
+
+                    <CommonButton
+                        title="Login"
+                        color={colors.secondaryColor}
+                        textColor={colors.primaryColor}
+                        style={styles.button}
+                        onPress={handleLogin}
+                        loading={loading}
+                    />
+
+                    <View style={{ height: hp(5) }} />
+
+                    <Text style={styles.labelText}>
+                        Don't have an account?{' '}
+                        <Text
+                            style={styles.labelHighlight}
+                            onPress={() =>
+                                navigation.replace('SignUpScreen')
+                            }
+                        >
+                            Sign up
+                        </Text>
+                    </Text>
                 </View>
-            </View>
 
-            <View>
-                <CommonButton
-                    title="Continue with Google"
-                    color={colors.whiteColor}
-                    textColor={colors.primaryColor}
-                    style={styles.button}
-                    isIcon
-                    icon="google"
-                    iconColor={colors.primaryColor}
-                    onPress={() => console.log('Continue with Google pressed')}
+                <View style={styles.divider}>
+                    <View style={styles.orContainer}>
+                        <Text style={styles.orText}>or</Text>
+                    </View>
+                </View>
+
+                <View>
+                    <CommonButton
+                        title="Continue with Google"
+                        color={colors.whiteColor}
+                        textColor={colors.primaryColor}
+                        style={styles.button}
+                        isIcon
+                        icon="google"
+                        iconColor={colors.primaryColor}
+                        onPress={() =>
+                            console.log('Continue with Google pressed')
+                        }
+                    />
+
+                    <CommonButton
+                        title="Continue with Apple"
+                        color={colors.blackColor}
+                        textColor={colors.whiteColor}
+                        style={styles.button}
+                        isIcon
+                        icon="apple"
+                        iconColor={colors.whiteColor}
+                        onPress={() =>
+                            console.log('Continue with Apple pressed')
+                        }
+                    />
+                </View>
+
+                <Snackbar
+                    {...snack}
+                    onDismiss={() =>
+                        setSnack(prev => ({
+                            ...prev,
+                            visible: false,
+                        }))
+                    }
                 />
-
-                <CommonButton
-                    title="Continue with Apple"
-                    color={colors.blackColor}
-                    textColor={colors.whiteColor}
-                    style={styles.button}
-                    isIcon
-                    icon="apple"
-                    iconColor={colors.whiteColor}
-                    onPress={() => console.log('Continue with Apple pressed')}
-                />
-            </View>
-
-            <Snackbar
-                {...snack}
-                onDismiss={() => setSnack(prev => ({ ...prev, visible: false }))}
-            />
-        </KeyboardAwareScrollView>
+            </KeyboardAwareScrollView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: colors.primaryColor,
+    },
+
     screen: {
         flex: 1,
         backgroundColor: colors.primaryColor,
     },
+
     container: {
         flexGrow: 1,
-        paddingHorizontal: 20,
-        paddingVertical: 20,
-        justifyContent: 'space-evenly',
+        paddingHorizontal: width * 0.05,
+        paddingBottom: 20,
     },
+
     card: {
+        width: '100%',
         backgroundColor: colors.cardWhiteOpacity,
         borderRadius: 38,
         paddingVertical: 40,
         paddingHorizontal: 24,
         borderWidth: 1,
         borderColor: colors.borderColor,
-        marginBottom: 40,
+        marginTop: 20,
+        marginBottom: 30,
     },
+
     titleText: {
-        fontSize: 24,
+        fontSize: width < 360 ? 22 : 24,
         fontWeight: '400',
         color: colors.whiteColor,
         textAlign: 'center',
     },
+
     subTitleText: {
         marginTop: 10,
-        fontSize: 16,
+        fontSize: width < 360 ? 14 : 16,
         fontWeight: '400',
         color: colors.secondaryColor,
         textAlign: 'center',
     },
+
     labelText: {
-        fontSize: 15,
+        fontSize: width < 360 ? 14 : 15,
         fontWeight: '300',
         color: colors.whiteColor,
         textAlign: 'center',
     },
+
     labelHighlight: {
         color: colors.secondaryColor,
         fontWeight: '500',
     },
+
     divider: {
         height: 1,
         backgroundColor: colors.whiteColor,
@@ -241,6 +282,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: 20,
     },
+
     orContainer: {
         width: 50,
         height: 25,
@@ -249,11 +291,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+
     orText: {
         fontSize: 16,
         fontWeight: '400',
         color: colors.primaryColor,
     },
+
     button: {
         marginVertical: 8,
     },

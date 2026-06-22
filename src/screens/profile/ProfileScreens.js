@@ -91,7 +91,7 @@ export default function ProfileScreen({ navigation }) {
     const activeVehicle = profile?.activeVehicle;
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <SafeAreaView style={styles.safeArea}>
             {loading ? (
                 <View style={styles.centered}>
                     <ActivityIndicator size="large" color={colors.blueColor} />
@@ -233,8 +233,6 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: '5%',
-        paddingTop: 50,
-        paddingBottom: 40,
         backgroundColor: colors.primaryColor,
     },
 

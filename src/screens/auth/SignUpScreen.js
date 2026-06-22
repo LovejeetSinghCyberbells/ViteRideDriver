@@ -14,6 +14,11 @@ import { useNavigation } from '@react-navigation/native';
 import { RegisterAccount } from '../../app/features/authSlice';
 import { useDispatch } from 'react-redux';
 import Snackbar from '../../components/Snackbar';
+import { Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+const { width, height } = Dimensions.get('window');
+
+const isSmallDevice = width < 375;
 
 export default function SignUpScreen() {
     const navigation = useNavigation();
@@ -155,240 +160,257 @@ export default function SignUpScreen() {
     };
 
     return (
-        <KeyboardAwareScrollView
-            style={styles.screen}
-            contentContainerStyle={styles.container}
-            keyboardShouldPersistTaps="handled"
-            enableOnAndroid
-            extraScrollHeight={30}
-            extraHeight={120}
-            showsVerticalScrollIndicator={false}
+        <SafeAreaView
+            style={styles.safeArea}
+            edges={['top', 'left', 'right']}
         >
-            <TouchableOpacity
-                onPress={() => navigation.goBack()}
-                activeOpacity={0.8}
+            <KeyboardAwareScrollView
+                style={styles.screen}
+                contentContainerStyle={styles.container}
+                keyboardShouldPersistTaps="handled"
+                enableOnAndroid
+                extraScrollHeight={30}
+                extraHeight={120}
+                showsVerticalScrollIndicator={false}
             >
-                <MaterialDesignIcons
-                    name="chevron-left"
-                    size={40}
-                    color={colors.whiteColor}
-                    style={{ marginEnd: 10 }}
-                />
-            </TouchableOpacity>
-
-            <View style={{ gap: 40 }}>
-                <View style={styles.card}>
-                    <Text style={styles.titleText}>
-                        {step === 1
-                            ? 'Create your account'
-                            : 'Tell us about your vehicle'}
-                    </Text>
-
-                    <Text style={styles.subTitleText}>
-                        Join millions of users today
-                    </Text>
-
-                    <View style={{ height: 20 }} />
-
-                    <Text
-                        style={[
-                            styles.subTitleText,
-                            { alignSelf: 'flex-end', marginBottom: 20 },
-                        ]}
-                    >
-                        Step {step} of 2
-                    </Text>
-
-                    {step === 1 && (
-                        <>
-                            <CommonTextField
-                                placeholder="Enter your Name"
-                                value={name}
-                                onChangeText={setName}
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <CommonTextField
-                                placeholder="Enter your email"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <CommonTextField
-                                placeholder="Enter your phone number"
-                                value={phone}
-                                onChangeText={setPhone}
-                                keyboardType="phone-pad"
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <CommonTextField
-                                placeholder="Create Password"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <CommonTextField
-                                placeholder="Confirm Password"
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                secureTextEntry
-                            />
-                        </>
-                    )}
-
-                    {step === 2 && (
-                        <>
-                            <CommonTextField
-                                placeholder="Vehicle Company"
-                                value={vehicleMake}
-                                onChangeText={setVehicleMake}
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <CommonTextField
-                                placeholder="Vehicle Model"
-                                value={vehicleModel}
-                                onChangeText={setVehicleModel}
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <CommonTextField
-                                placeholder="Vehicle Year"
-                                value={vehicleYear}
-                                onChangeText={setVehicleYear}
-                                keyboardType="numeric"
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <CommonTextField
-                                placeholder="License Plate"
-                                value={licencePlate}
-                                onChangeText={setLicencePlate}
-                            />
-
-                            <View style={{ height: 20 }} />
-
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <TouchableOpacity onPress={handleTermsCheck}>
-                                    <View
-                                        style={{
-                                            width: 25,
-                                            height: 25,
-                                            backgroundColor: colors.whiteColor,
-                                            borderRadius: 8,
-                                        }}
-                                    >
-                                        {checkPrivacyAndTerms && (
-                                            <MaterialDesignIcons
-                                                name="check"
-                                                size={25}
-                                                color={colors.blackColor}
-                                            />
-                                        )}
-                                    </View>
-                                </TouchableOpacity>
-
-                                <Text
-                                    style={[
-                                        styles.labelText,
-                                        { textAlign: 'left', flex: 1 },
-                                    ]}
-                                >
-                                    I agree to the{' '}
-                                    <Text style={styles.labelHighlight}>
-                                        Terms of Service
-                                    </Text>{' '}
-                                    and{' '}
-                                    <Text style={styles.labelHighlight}>
-                                        Privacy Policy
-                                    </Text>
-                                    .
-                                </Text>
-                            </View>
-                        </>
-                    )}
-
-                    <View style={{ height: 20 }} />
-
-                    <CommonButton
-                        title={step === 1 ? 'Next' : 'Create Account'}
-                        color={colors.secondaryColor}
-                        textColor={colors.primaryColor}
-                        onPress={handleSubmit}
-                        loading={loading}
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.8}
+                >
+                    <MaterialDesignIcons
+                        name="chevron-left"
+                        size={40}
+                        color={colors.whiteColor}
+                        style={{ marginEnd: 10 }}
                     />
+                </TouchableOpacity>
+
+                <View style={{ gap: 40 }}>
+                    <View style={styles.card}>
+                        <Text style={styles.titleText}>
+                            {step === 1
+                                ? 'Create your account'
+                                : 'Tell us about your vehicle'}
+                        </Text>
+
+                        <Text style={styles.subTitleText}>
+                            Join millions of users today
+                        </Text>
+
+                        <View style={{ height: 20 }} />
+
+                        <Text
+                            style={[
+                                styles.subTitleText,
+                                { alignSelf: 'flex-end', marginBottom: 20 },
+                            ]}
+                        >
+                            Step {step} of 2
+                        </Text>
+
+                        {step === 1 && (
+                            <>
+                                <CommonTextField
+                                    placeholder="Enter your Name"
+                                    value={name}
+                                    onChangeText={setName}
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <CommonTextField
+                                    placeholder="Enter your email"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <CommonTextField
+                                    placeholder="Enter your phone number"
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    keyboardType="phone-pad"
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <CommonTextField
+                                    placeholder="Create Password"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <CommonTextField
+                                    placeholder="Confirm Password"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry
+                                />
+                            </>
+                        )}
+
+                        {step === 2 && (
+                            <>
+                                <CommonTextField
+                                    placeholder="Vehicle Company"
+                                    value={vehicleMake}
+                                    onChangeText={setVehicleMake}
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <CommonTextField
+                                    placeholder="Vehicle Model"
+                                    value={vehicleModel}
+                                    onChangeText={setVehicleModel}
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <CommonTextField
+                                    placeholder="Vehicle Year"
+                                    value={vehicleYear}
+                                    onChangeText={setVehicleYear}
+                                    keyboardType="numeric"
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <CommonTextField
+                                    placeholder="License Plate"
+                                    value={licencePlate}
+                                    onChangeText={setLicencePlate}
+                                />
+
+                                <View style={{ height: 20 }} />
+
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <TouchableOpacity onPress={handleTermsCheck}>
+                                        <View
+                                            style={{
+                                                width: 25,
+                                                height: 25,
+                                                backgroundColor: colors.whiteColor,
+                                                borderRadius: 8,
+                                            }}
+                                        >
+                                            {checkPrivacyAndTerms && (
+                                                <MaterialDesignIcons
+                                                    name="check"
+                                                    size={25}
+                                                    color={colors.blackColor}
+                                                />
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <Text
+                                        style={[
+                                            styles.labelText,
+                                            { textAlign: 'left', flex: 1 },
+                                        ]}
+                                    >
+                                        I agree to the{' '}
+                                        <Text style={styles.labelHighlight}>
+                                            Terms of Service
+                                        </Text>{' '}
+                                        and{' '}
+                                        <Text style={styles.labelHighlight}>
+                                            Privacy Policy
+                                        </Text>
+                                        .
+                                    </Text>
+                                </View>
+                            </>
+                        )}
+
+                        <View style={{ height: 20 }} />
+
+                        <CommonButton
+                            title={step === 1 ? 'Next' : 'Create Account'}
+                            color={colors.secondaryColor}
+                            textColor={colors.primaryColor}
+                            onPress={handleSubmit}
+                            loading={loading}
+                        />
+                    </View>
+
+                    <Text style={styles.labelText}>
+                        Already have an account?{' '}
+                        <Text
+                            style={styles.labelHighlight}
+                            onPress={() => navigation.replace('Login')}
+                        >
+                            Log in
+                        </Text>
+                    </Text>
                 </View>
 
-                <Text style={styles.labelText}>
-                    Already have an account?{' '}
-                    <Text
-                        style={styles.labelHighlight}
-                        onPress={() => navigation.replace('Login')}
-                    >
-                        Log in
-                    </Text>
-                </Text>
-            </View>
-
-            <Snackbar
-                {...snack}
-                onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
-            />
-        </KeyboardAwareScrollView>
+                <Snackbar
+                    {...snack}
+                    onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
+                />
+            </KeyboardAwareScrollView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: colors.primaryColor,
+    },
+
     screen: {
         flex: 1,
         backgroundColor: colors.primaryColor,
     },
+
     container: {
         flexGrow: 1,
         backgroundColor: colors.primaryColor,
-        paddingHorizontal: 20,
-        paddingVertical: 20,
-        justifyContent: 'space-evenly',
+        paddingHorizontal: width * 0.05,
+        paddingTop: 10,
+        paddingBottom: 30,
     },
+
     card: {
+        marginTop: 40,
         backgroundColor: colors.cardWhiteOpacity,
         borderRadius: 38,
-        paddingVertical: 40,
-        paddingHorizontal: 24,
+        paddingVertical: 30,
+        paddingHorizontal: 20,
         borderWidth: 1,
         borderColor: colors.borderColor,
     },
+
     titleText: {
-        fontSize: 24,
+        fontSize: isSmallDevice ? 22 : 24,
         fontWeight: '400',
         color: colors.whiteColor,
         textAlign: 'center',
     },
+
     subTitleText: {
         marginTop: 10,
-        fontSize: 16,
+        fontSize: isSmallDevice ? 14 : 16,
         fontWeight: '400',
         color: colors.secondaryColor,
         textAlign: 'center',
     },
+
     labelText: {
-        fontSize: 15,
+        fontSize: isSmallDevice ? 14 : 15,
         fontWeight: '300',
         color: colors.whiteColor,
         textAlign: 'center',
     },
+
     labelHighlight: {
         color: colors.secondaryColor,
         fontWeight: '500',

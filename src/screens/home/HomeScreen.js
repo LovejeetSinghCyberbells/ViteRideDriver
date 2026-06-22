@@ -6,6 +6,9 @@ import colors from '../../common/Colors';
 import CommonToggleSwitch from '../../components/CommonToggleSwitch';
 import CommonButton from '../../components/CommonButton';
 import RideRequestSheet from '../../components/RideRequestSheet';
+import { Dimensions } from 'react-native';
+const { width, height } = Dimensions.get('window');
+const isSmallDevice = width < 375;
 
 const STATUS_DATA = [
     { icon: 'power-settings-new', title: "Earnings", data: '$148.75', bgColor: colors.lightGreenColor, iconColor: colors.greenColor },
@@ -41,7 +44,7 @@ export default function HomeScreen({ navigation }) {
     }, []);
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={'bottom'}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -49,7 +52,11 @@ export default function HomeScreen({ navigation }) {
                 <View style={[styles.container, sheetOpen && { backgroundColor: '#04040450' }]}>
                     <View style={styles.locationTopBar}>
                         <View style={styles.locationContainer}>
-                            <MaterialDesignIcons name='location-on' size={50} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name="location-on"
+                                size={isSmallDevice ? 40 : 50}
+                                color={colors.secondaryColor}
+                            />
                             <View style={styles.locationTextColumn}>
                                 <Text style={styles.labelText}>Current Location</Text>
                                 <Text style={styles.labelHighlight}>Mandume Ndemufayo Ave, Windhoek</Text>
@@ -85,7 +92,9 @@ export default function HomeScreen({ navigation }) {
                         onPress={() => setOnline(!online)}
                         color={colors.secondaryColor}
                         textColor={colors.primaryColor}
-                        style={{ marginTop: 40 }}
+                        style={{
+                            marginTop: 30,
+                        }}
                     />
                 </View>
             </ScrollView>
@@ -115,132 +124,144 @@ export default function HomeScreen({ navigation }) {
         </SafeAreaView>
     );
 }
-
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: colors.primaryColor,
     },
+
     scrollContent: {
         flexGrow: 1,
     },
+
     container: {
         flex: 1,
         backgroundColor: colors.primaryColor,
-        paddingHorizontal: 20,
-        paddingVertical: 60,
-        justifyContent: 'center'
+        paddingHorizontal: width * 0.05,
+        paddingTop: height * 0.03,
+        paddingBottom: height * 0.04,
     },
+
     locationTopBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'flex-start',
     },
+
     locationContainer: {
         flexDirection: 'row',
-        justifyContent: 'flex-start',
-        gap: 10,
-        alignItems: 'center'
+        flex: 1,
+        marginRight: 10,
+        alignItems: 'center',
     },
+
     locationTextColumn: {
-        justifyContent: 'flex-start'
+        flex: 1,
+        marginLeft: 10,
     },
+
     labelText: {
-        fontSize: 14,
+        fontSize: isSmallDevice ? 13 : 14,
         fontWeight: '500',
         color: colors.secondaryColor,
     },
+
     labelHighlight: {
-        fontSize: 12,
+        fontSize: isSmallDevice ? 11 : 12,
         color: colors.whiteColor,
         fontWeight: '400',
     },
+
     statusBgContainer: {
         backgroundColor: colors.cardWhiteOpacity,
-        padding: 20,
+        padding: width * 0.05,
         borderRadius: 12,
-        marginTop: 40
+        marginTop: 25,
     },
+
     statusContainer: {
         flexDirection: 'row',
-        justifyContent: 'flex-start',
-        gap: 20,
-        alignItems: 'center'
+        alignItems: 'center',
     },
+
     powerIconConatiner: {
-        width: 50,
-        height: 50,
+        width: isSmallDevice ? 45 : 50,
+        height: isSmallDevice ? 45 : 50,
         borderRadius: 100,
         backgroundColor: colors.secondaryColor,
         justifyContent: 'center',
-        alignItems: 'center'
-    },
-    statusTextColumn: {
-        justifyContent: 'flex-start'
-    },
-    statusText: {
-        fontSize: 20,
-        fontWeight: '500',
-        color: colors.whiteColor,
-        lineHeight: 30
-    },
-    statusHighlight: {
-        fontSize: 14,
-        color: colors.whiteColor,
-        fontWeight: '400',
-        lineHeight: 20
-    },
-    todaySummaryConatiner: {
-        backgroundColor: colors.cardWhiteOpacity,
-        justifyContent: 'center',
-        padding: 20,
-        borderRadius: 15,
-        marginTop: 40
-    },
-    todaySummaryText: {
-        fontSize: 18,
-        color: colors.whiteColor,
-        fontWeight: '500',
-        lineHeight: 27
-    },
-    IconContainer: {
-        width: 50,
-        height: 50,
-        borderRadius: 100,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    summaryTextColumn: {
-        justifyContent: 'flex-start',
         alignItems: 'center',
     },
+
+    statusTextColumn: {
+        flex: 1,
+        marginLeft: 15,
+    },
+
+    statusText: {
+        fontSize: isSmallDevice ? 18 : 20,
+        fontWeight: '500',
+        color: colors.whiteColor,
+    },
+
+    statusHighlight: {
+        fontSize: isSmallDevice ? 13 : 14,
+        color: colors.whiteColor,
+        fontWeight: '400',
+    },
+
+    todaySummaryConatiner: {
+        backgroundColor: colors.cardWhiteOpacity,
+        padding: width * 0.05,
+        borderRadius: 15,
+        marginTop: 25,
+    },
+
+    todaySummaryText: {
+        fontSize: isSmallDevice ? 16 : 18,
+        color: colors.whiteColor,
+        fontWeight: '500',
+    },
+
+    IconContainer: {
+        width: isSmallDevice ? 45 : 50,
+        height: isSmallDevice ? 45 : 50,
+        borderRadius: 100,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    summaryTextColumn: {
+        marginLeft: 10,
+        flex: 1,
+    },
+
     summaryText: {
-        fontSize: 14,
+        fontSize: isSmallDevice ? 13 : 14,
         fontWeight: '400',
         color: colors.borderColor,
-        lineHeight: 20,
-        alignSelf: 'flex-start'
     },
+
     summaryHighlight: {
-        fontSize: 16,
+        fontSize: isSmallDevice ? 15 : 16,
         color: colors.blackColor,
         fontWeight: '400',
-        lineHeight: 24,
-        alignSelf: 'flex-start'
     },
+
     summaryCard: {
         flexDirection: 'row',
         backgroundColor: colors.whiteColor,
-        justifyContent: 'flex-start',
         alignItems: 'center',
-        gap: 10,
-        padding: 20,
+        padding: width * 0.04,
         borderRadius: 15,
     },
+
     mapConatiner: {
-        height: 200,
+        height: height * 0.25,
+        minHeight: 180,
+        maxHeight: 300,
         backgroundColor: colors.whiteColor,
         marginTop: 20,
         borderRadius: 15,
-    }
+    },
 });
