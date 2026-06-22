@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
+import {
+    StyleSheet,
+    View,
+    Text,
+    TouchableOpacity,
+} from 'react-native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import CommonButton from '../../components/CommonButton';
 import CommonTextField from '../../components/CommonTextField';
 import colors from '../../common/Colors';
 import { useNavigation } from '@react-navigation/native';
 import { RegisterAccount } from '../../app/features/authSlice';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import Snackbar from '../../components/Snackbar';
 
 export default function SignUpScreen() {
@@ -24,220 +30,307 @@ export default function SignUpScreen() {
     const [vehicleYear, setVehicleYear] = useState('');
     const [licencePlate, setLicencePlate] = useState('');
     const [checkPrivacyAndTerms, setCheckPrivacyAndTerms] = useState(false);
-    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+    const [loading, setLoading] = useState(false);
 
+    const [snack, setSnack] = useState({
+        visible: false,
+        type: 'default',
+        title: '',
+        message: '',
+    });
+
+    const showError = (message, title = 'Error') => {
+        setSnack({ visible: true, type: 'error', title, message });
+    };
+
+    const showSuccess = (message, title = 'Success') => {
+        setSnack({ visible: true, type: 'success', title, message });
+    };
 
     const handleTermsCheck = () => {
-        setCheckPrivacyAndTerms(!checkPrivacyAndTerms);
+        setCheckPrivacyAndTerms(prev => !prev);
+    };
+
+    const validateStep1 = () => {
+        if (!name.trim()) {
+            showError('Please enter your name.');
+            return false;
+        }
+        if (!email.trim()) {
+            showError('Please enter your email.');
+            return false;
+        }
+        if (!phone.trim()) {
+            showError('Please enter your phone number.');
+            return false;
+        }
+        if (!password.trim()) {
+            showError('Please enter a password.');
+            return false;
+        }
+        if (!confirmPassword.trim()) {
+            showError('Please confirm your password.');
+            return false;
+        }
+        if (password !== confirmPassword) {
+            showError('Passwords do not match.');
+            return false;
+        }
+        return true;
+    };
+
+    const validateStep2 = () => {
+        if (!vehicleMake.trim()) {
+            showError('Please enter the vehicle company.');
+            return false;
+        }
+        if (!vehicleModel.trim()) {
+            showError('Please enter the vehicle model.');
+            return false;
+        }
+        if (!vehicleYear.trim()) {
+            showError('Please enter the vehicle year.');
+            return false;
+        }
+        if (!licencePlate.trim()) {
+            showError('Please enter the vehicle license plate.');
+            return false;
+        }
+        if (!checkPrivacyAndTerms) {
+            showError('Please accept the Privacy Policy and Terms of Service.');
+            return false;
+        }
+        return true;
     };
 
     const handleSubmit = async () => {
         if (step === 1) {
-            if (!name.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your name.' });
-                return;
-            }
-            if (!email.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your email.' });
-                return;
-            }
-            if (!phone.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your phone number.' });
-
-                return;
-            }
-            if (!password.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter password.' });
-                return;
-            }
-            if (!confirmPassword.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please confirm password.' });
-                return;
-            }
-            if (password !== confirmPassword) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Passwords do not match.' });
-                return;
-            }
-            setStep(2);
+            if (validateStep1()) setStep(2);
             return;
         }
-        if (step === 2) {
-            if (!vehicleMake.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please Vehicle company name.' });
-                return;
-            }
-            if (!vehicleModel.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please Vehicle model.' });
-                return;
-            }
-            if (!vehicleYear.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please Vehicle year.' });
-                return;
-            }
-            if (!licencePlate.trim()) {
-                setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle license plate number.' });
-                return;
-            }
-        }
 
-        if (!checkPrivacyAndTerms) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Please accept the privacy policy first.' });
-            return;
-        }
+        if (!validateStep2()) return;
+
+        const userData = {
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            password: password.trim(),
+            confirmPassword: confirmPassword.trim(),
+            vehicleMake: vehicleMake.trim(),
+            vehicleModel: vehicleModel.trim(),
+            vehicleYear: vehicleYear.trim(),
+            licensePlate: licencePlate.trim(),
+            vehicleType: 'Sedan',
+            vehicleColor: 'Black',
+        };
 
         try {
-            const userData = {
-                "name": name.trim(),
-                "email": email.trim(),
-                "phone": phone.trim(),
-                "password": password.trim(),
-                "confirmPassword": confirmPassword.trim(),
-                "vehicleMake": vehicleMake.trim(),
-                "vehicleModel": vehicleModel.trim(),
-                "vehicleYear": vehicleYear.trim(),
-                "licensePlate": licencePlate.trim(),
-                "vehicleType": "Sedan",
-                "vehicleColor": "Black",
-            }
+            setLoading(true);
 
             const response = await dispatch(RegisterAccount(userData)).unwrap();
-            if (response.status === 200 || response.status === 201) {
-                setSnack({ visible: true, type: 'success', title: 'Registeration Successfull!', message: 'Welcome to ViteRide.' });
 
-                navigation.replace('Login');
+            if (response?.success) {
+                showSuccess(
+                    response?.message || 'Welcome to ViteRide.',
+                    'Registration Successful!'
+                );
+                setTimeout(() => navigation.replace('Login'), 1200);
+            } else {
+                showError(
+                    response?.message || 'Something went wrong.',
+                    'Registration Failed'
+                );
             }
-
         } catch (error) {
-            setSnack({ visible: true, type: 'error', title: 'Registration failed', message: error ?? 'Failed to register.' });
-        }
+            const message =
+                typeof error === 'string'
+                    ? error
+                    : error?.message || 'Failed to register. Please try again.';
 
+            showError(message, 'Registration Failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <View style={styles.container}>
+        <KeyboardAwareScrollView
+            style={styles.screen}
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+            enableOnAndroid
+            extraScrollHeight={30}
+            extraHeight={120}
+            showsVerticalScrollIndicator={false}
+        >
             <TouchableOpacity
-                onPress={() => { navigation.goBack() }}
+                onPress={() => navigation.goBack()}
                 activeOpacity={0.8}
             >
                 <MaterialDesignIcons
-                    name='chevron-left'
+                    name="chevron-left"
                     size={40}
                     color={colors.whiteColor}
                     style={{ marginEnd: 10 }}
                 />
             </TouchableOpacity>
+
             <View style={{ gap: 40 }}>
                 <View style={styles.card}>
                     <Text style={styles.titleText}>
-                        {step === 1 ? "Create your account" : "Tell us about your vehicle"}
+                        {step === 1
+                            ? 'Create your account'
+                            : 'Tell us about your vehicle'}
                     </Text>
-                    <Text style={styles.subTitleText}>Join millions of users today</Text>
+
+                    <Text style={styles.subTitleText}>
+                        Join millions of users today
+                    </Text>
+
                     <View style={{ height: 20 }} />
-                    <Text style={[styles.subTitleText, { alignSelf: 'flex-end', marginBottom: 20 }]}>
-                        Step {step === 1 ? "1" : "2"} of 2
+
+                    <Text
+                        style={[
+                            styles.subTitleText,
+                            { alignSelf: 'flex-end', marginBottom: 20 },
+                        ]}
+                    >
+                        Step {step} of 2
                     </Text>
 
                     {step === 1 && (
-                        <View>
+                        <>
                             <CommonTextField
                                 placeholder="Enter your Name"
                                 value={name}
                                 onChangeText={setName}
                             />
+
                             <View style={{ height: 20 }} />
+
                             <CommonTextField
                                 placeholder="Enter your email"
                                 value={email}
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
                             />
+
                             <View style={{ height: 20 }} />
+
                             <CommonTextField
                                 placeholder="Enter your phone number"
                                 value={phone}
                                 onChangeText={setPhone}
                                 keyboardType="phone-pad"
                             />
+
                             <View style={{ height: 20 }} />
+
                             <CommonTextField
                                 placeholder="Create Password"
                                 value={password}
                                 onChangeText={setPassword}
-                                secureTextEntry={true}
+                                secureTextEntry
                             />
+
                             <View style={{ height: 20 }} />
+
                             <CommonTextField
                                 placeholder="Confirm Password"
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
-                                secureTextEntry={true}
+                                secureTextEntry
                             />
-                        </View>
+                        </>
                     )}
 
                     {step === 2 && (
-                        <View>
+                        <>
                             <CommonTextField
                                 placeholder="Vehicle Company"
                                 value={vehicleMake}
                                 onChangeText={setVehicleMake}
                             />
+
                             <View style={{ height: 20 }} />
+
                             <CommonTextField
                                 placeholder="Vehicle Model"
                                 value={vehicleModel}
                                 onChangeText={setVehicleModel}
                             />
+
                             <View style={{ height: 20 }} />
+
                             <CommonTextField
                                 placeholder="Vehicle Year"
                                 value={vehicleYear}
                                 onChangeText={setVehicleYear}
                                 keyboardType="numeric"
                             />
+
                             <View style={{ height: 20 }} />
+
                             <CommonTextField
                                 placeholder="License Plate"
                                 value={licencePlate}
                                 onChangeText={setLicencePlate}
                             />
+
                             <View style={{ height: 20 }} />
 
                             <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <TouchableOpacity
-                                    onPress={handleTermsCheck}
-                                >
-                                    <View style={{
-                                        width: 25,
-                                        height: 25,
-                                        backgroundColor: colors.whiteColor,
-                                        borderRadius: 8
-                                    }}>
+                                <TouchableOpacity onPress={handleTermsCheck}>
+                                    <View
+                                        style={{
+                                            width: 25,
+                                            height: 25,
+                                            backgroundColor: colors.whiteColor,
+                                            borderRadius: 8,
+                                        }}
+                                    >
                                         {checkPrivacyAndTerms && (
                                             <MaterialDesignIcons
-                                                name='check'
+                                                name="check"
                                                 size={25}
                                                 color={colors.blackColor}
                                             />
                                         )}
                                     </View>
                                 </TouchableOpacity>
-                                <Text style={[styles.labelText, { textAlign: 'left', flex: 1 }]}>
-                                    I agree to the <Text style={styles.labelHighlight}>Terms of Service</Text> and <Text style={styles.labelHighlight}>Privacy Policy.</Text> I understand that background checks and vehicle inspections are required.
+
+                                <Text
+                                    style={[
+                                        styles.labelText,
+                                        { textAlign: 'left', flex: 1 },
+                                    ]}
+                                >
+                                    I agree to the{' '}
+                                    <Text style={styles.labelHighlight}>
+                                        Terms of Service
+                                    </Text>{' '}
+                                    and{' '}
+                                    <Text style={styles.labelHighlight}>
+                                        Privacy Policy
+                                    </Text>
+                                    .
                                 </Text>
                             </View>
-                        </View>
+                        </>
                     )}
 
                     <View style={{ height: 20 }} />
+
                     <CommonButton
-                        title={step === 1 ? "Next" : "Create Account"}
+                        title={step === 1 ? 'Next' : 'Create Account'}
                         color={colors.secondaryColor}
                         textColor={colors.primaryColor}
-                        style={styles.button}
                         onPress={handleSubmit}
+                        loading={loading}
                     />
                 </View>
+
                 <Text style={styles.labelText}>
                     Already have an account?{' '}
                     <Text
@@ -248,20 +341,25 @@ export default function SignUpScreen() {
                     </Text>
                 </Text>
             </View>
+
             <Snackbar
                 {...snack}
                 onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
             />
-        </View>
+        </KeyboardAwareScrollView>
     );
 }
 
-
 const styles = StyleSheet.create({
-    container: {
+    screen: {
         flex: 1,
         backgroundColor: colors.primaryColor,
+    },
+    container: {
+        flexGrow: 1,
+        backgroundColor: colors.primaryColor,
         paddingHorizontal: 20,
+        paddingVertical: 20,
         justifyContent: 'space-evenly',
     },
     card: {

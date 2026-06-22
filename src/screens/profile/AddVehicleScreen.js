@@ -1,39 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
+import {
+    StyleSheet,
+    View,
+    Text,
+    TouchableOpacity,
+    Image,
+    Modal,
+    Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../../common/Colors';
 import CommonButton from '../../components/CommonButton';
 import CommonTextField from '../../components/CommonTextField';
 import { AddVehicle, EditVehicle } from '../../app/features/vehicleSlice';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import Snackbar from '../../components/Snackbar';
 
 export default function AddVehicleScreen({ navigation, route }) {
     const { isEdit = false, vehicle = null } = route.params ?? {};
     const dispatch = useDispatch();
+
     const [vehicleImage, setVehicleImage] = useState(null);
     const [showImageOptions, setShowImageOptions] = useState(false);
-    const [vehicleCompany, setVehicleCompany] = useState(null);
-    const [vehicleModel, setVehicleModel] = useState(null);
-    const [vehicleType, setVehicleType] = useState(null);
-    const [plateNumber, setPlateNumber] = useState(null);
-    const [vehicleColor, setVehicleColor] = useState(null);
-    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+    const [vehicleCompany, setVehicleCompany] = useState('');
+    const [vehicleModel, setVehicleModel] = useState('');
+    const [vehicleType, setVehicleType] = useState('');
+    const [plateNumber, setPlateNumber] = useState('');
+    const [vehicleColor, setVehicleColor] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const [snack, setSnack] = useState({
+        visible: false,
+        type: 'default',
+        title: '',
+        message: '',
+    });
+
+    const showError = (message, title = 'Error') => {
+        setSnack({ visible: true, type: 'error', title, message });
+    };
+
+    const showSuccess = (message, title = 'Success') => {
+        setSnack({ visible: true, type: 'success', title, message });
+    };
 
     useEffect(() => {
-        console.log("Vehicle from edit screen :", vehicle);
-        console.log("Vehicle from edit screen :", isEdit);
-
         if (vehicle) {
-            setVehicleCompany(vehicle.make);
-            setVehicleModel(vehicle.model);
-            setVehicleType(vehicle.vehicleType);
-            setPlateNumber(vehicle.licensePlate);
-            setVehicleColor(vehicle.color);
+            setVehicleCompany(vehicle.make ?? '');
+            setVehicleModel(vehicle.model ?? '');
+            setVehicleType(vehicle.vehicleType ?? '');
+            setPlateNumber(vehicle.licensePlate ?? '');
+            setVehicleColor(vehicle.color ?? '');
         }
-    }, [vehicle, isEdit]);
+    }, [vehicle]);
 
 
     const handleEditImage = () => setShowImageOptions(true);
@@ -66,111 +88,120 @@ export default function AddVehicleScreen({ navigation, route }) {
         }, 300);
     };
 
-    const handleEditVehicle = async () => {
 
+    const validate = () => {
         if (!vehicleCompany.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle company.' });
-            return;
+            showError('Please enter the vehicle company.');
+            return false;
         }
         if (!vehicleModel.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle model.' });
-            return;
+            showError('Please enter the vehicle model.');
+            return false;
         }
         if (!vehicleType.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle type (Sedan, Suv etc.).' });
-            return;
+            showError('Please enter the vehicle type (Sedan, SUV etc.).');
+            return false;
         }
         if (!plateNumber.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle plate number.' });
-            return;
+            showError('Please enter the vehicle plate number.');
+            return false;
         }
-
         if (!vehicleColor.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle color.' });
-            return;
+            showError('Please enter the vehicle color.');
+            return false;
         }
-        try {
-            const vehicleData = {
-                "make": vehicleCompany,
-                "model": vehicleModel,
-                "vehicleType": vehicleType,
-                "licensePlate": plateNumber,
-                "color": vehicleColor
-            }
-
-            console.log("vehicleData : ", vehicleData);
-            const response = await dispatch(EditVehicle({ vehicleData, id: vehicle._id })).unwrap();
-            console.log("Response : ", response);
-            if (response.status === 'success' || response.message) {
-                setSnack({ visible: true, type: 'success', title: 'Vehicle Edited Successfully!', message: 'Your vehicle edited successfully.' });
-                navigation.goBack();
-            }
-        } catch (error) {
-            console.log("Error : ", error);
-            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to Edit Vehicle.' });
-        }
-
+        return true;
     };
 
-    const handleAddVehicle = async () => {
+    const buildPayload = () => ({
+        make: vehicleCompany.trim(),
+        model: vehicleModel.trim(),
+        vehicleType: vehicleType.trim(),
+        licensePlate: plateNumber.trim(),
+        color: vehicleColor.trim(),
+    });
 
-        if (!vehicleCompany.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle company.' });
-            return;
-        }
-        if (!vehicleModel.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle model.' });
-            return;
-        }
-        if (!vehicleType.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter vehicle type (Sedan, Suv etc.).' });
-            return;
-        }
-        if (!plateNumber.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle plate number.' });
-            return;
-        }
 
-        if (!vehicleColor.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your vehicle color.' });
-            return;
-        }
+    const handleSubmit = async () => {
+        if (!validate()) return;
+
         try {
-            const vehicleData = {
-                "make": vehicleCompany,
-                "model": vehicleModel,
-                "vehicleType": vehicleType,
-                "licensePlate": plateNumber,
-                "color": vehicleColor
-            }
+            setLoading(true);
 
-            console.log("vehicleData : ", vehicleData);
-            const response = await dispatch(AddVehicle(vehicleData)).unwrap();
-            console.log("Response : ", response);
-            if (response.status === 'success' || response.message) {
-                setSnack({ visible: true, type: 'success', title: 'Vehicle Added Successfully!', message: 'Your vehicle added successfully.' });
-                navigation.goBack();
+            const vehicleData = buildPayload();
+
+            if (isEdit) {
+                const response = await dispatch(
+                    EditVehicle({ vehicleData, id: vehicle._id })
+                ).unwrap();
+
+                if (response?.success || response?.message) {
+                    showSuccess(
+                        response?.message || 'Your vehicle has been updated.',
+                        'Vehicle Updated!'
+                    );
+                    setTimeout(() => navigation.goBack(), 1200);
+                } else {
+                    showError(
+                        response?.message || 'Failed to update vehicle.',
+                        'Update Failed'
+                    );
+                }
+            } else {
+                const response = await dispatch(AddVehicle(vehicleData)).unwrap();
+
+                if (response?.success || response?.message) {
+                    showSuccess(
+                        response?.message || 'Your vehicle has been added.',
+                        'Vehicle Added!'
+                    );
+                    setTimeout(() => navigation.goBack(), 1200);
+                } else {
+                    showError(
+                        response?.message || 'Failed to add vehicle.',
+                        'Add Failed'
+                    );
+                }
             }
         } catch (error) {
-            console.log("Error : ", error);
-            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to Add Vehicle.' });
-        }
+            const message =
+                typeof error === 'string'
+                    ? error
+                    : error?.message || `Failed to ${isEdit ? 'update' : 'add'} vehicle.`;
 
+            showError(message, isEdit ? 'Update Failed' : 'Add Failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
             <View style={styles.screenHeader}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <MaterialDesignIcons name="arrow-back-ios" size={24} color={colors.whiteColor} />
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <MaterialDesignIcons
+                        name="arrow-back-ios"
+                        size={24}
+                        color={colors.whiteColor}
+                    />
                 </TouchableOpacity>
-                <Text style={styles.screenTitle}>{isEdit ? "Edit Vehicle" : "Add Vehicle"}</Text>
+                <Text style={styles.screenTitle}>
+                    {isEdit ? 'Edit Vehicle' : 'Add Vehicle'}
+                </Text>
                 <View style={styles.headerSpacer} />
             </View>
 
-            <ScrollView
+            <KeyboardAwareScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                enableOnAndroid
+                extraScrollHeight={30}
+                extraHeight={120}
             >
                 <View style={styles.avatarContainer}>
                     <View style={styles.avatarWrapper}>
@@ -181,47 +212,80 @@ export default function AddVehicleScreen({ navigation, route }) {
                                     : require('../../assets/images/car.png')
                             }
                             style={styles.vehicleImage}
-                            resizeMode='cover'
+                            resizeMode="cover"
                         />
                     </View>
-                    <TouchableOpacity style={styles.editImageButton} onPress={handleEditImage}>
-                        <MaterialDesignIcons name="edit" size={14} color={colors.whiteColor} />
+                    <TouchableOpacity
+                        style={styles.editImageButton}
+                        onPress={handleEditImage}
+                        activeOpacity={0.8}
+                    >
+                        <MaterialDesignIcons
+                            name="edit"
+                            size={14}
+                            color={colors.whiteColor}
+                        />
                     </TouchableOpacity>
                 </View>
 
                 <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>Vehicle Company</Text>
-                    <CommonTextField placeholder={'e.g. Toyota, Honda'} value={vehicleCompany} onChangeText={setVehicleCompany} isEditable={!isEdit} />
+                    <CommonTextField
+                        placeholder="e.g. Toyota, Honda"
+                        value={vehicleCompany}
+                        onChangeText={setVehicleCompany}
+                        isEditable={!isEdit}
+                    />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Vehicle Model</Text>
-                    <CommonTextField placeholder={'e.g. Camry, CR-V'} value={vehicleModel} onChangeText={setVehicleModel} isEditable={!isEdit} />
+                    <CommonTextField
+                        placeholder="e.g. Camry, CR-V"
+                        value={vehicleModel}
+                        onChangeText={setVehicleModel}
+                        isEditable={!isEdit}
+                    />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Vehicle Type</Text>
-                    <CommonTextField placeholder={'e.g. Sedan, SUV, Bike'} value={vehicleType} onChangeText={setVehicleType} isEditable={!isEdit} />
+                    <CommonTextField
+                        placeholder="e.g. Sedan, SUV, Bike"
+                        value={vehicleType}
+                        onChangeText={setVehicleType}
+                        isEditable={!isEdit}
+                    />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Plate Number</Text>
-                    <CommonTextField placeholder={'e.g. LG 234 ABC'} value={plateNumber} onChangeText={setPlateNumber} isEditable={!isEdit} />
+                    <CommonTextField
+                        placeholder="e.g. LG 234 ABC"
+                        value={plateNumber}
+                        onChangeText={setPlateNumber}
+                        isEditable={!isEdit}
+                    />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Vehicle Color</Text>
-                    <CommonTextField placeholder={'e.g. Black, White, Silver'} value={vehicleColor} onChangeText={setVehicleColor} />
+                    <CommonTextField
+                        placeholder="e.g. Black, White, Silver"
+                        value={vehicleColor}
+                        onChangeText={setVehicleColor}
+                    />
                 </View>
 
                 <CommonButton
-                    title={isEdit ? 'Edit Vehicle' : 'Add Vehicle'}
+                    title={isEdit ? 'Update Vehicle' : 'Add Vehicle'}
                     textColor={colors.whiteColor}
                     color={colors.secondaryColor}
                     style={styles.submitButton}
-                    onPress={isEdit ? handleEditVehicle : handleAddVehicle}
+                    onPress={handleSubmit}
+                    loading={loading}
                 />
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <Modal
                 visible={showImageOptions}
@@ -229,32 +293,61 @@ export default function AddVehicleScreen({ navigation, route }) {
                 animationType="fade"
                 onRequestClose={() => setShowImageOptions(false)}
             >
-                <Pressable style={styles.alertOverlay} onPress={() => setShowImageOptions(false)}>
-                    <Pressable style={styles.alertBox} onPress={() => { }}>
-
+                <Pressable
+                    style={styles.alertOverlay}
+                    onPress={() => setShowImageOptions(false)}
+                >
+                    <Pressable style={styles.alertBox} onPress={() => {}}>
                         <View style={styles.alertIconCircle}>
-                            <MaterialDesignIcons name="add-a-photo" size={26} color={colors.primaryColor} />
+                            <MaterialDesignIcons
+                                name="add-a-photo"
+                                size={26}
+                                color={colors.primaryColor}
+                            />
                         </View>
 
-                        <Text style={styles.alertTitle}>{isEdit ? 'Edit' : 'Add'} Vehicle Photo</Text>
-                        <Text style={styles.alertSubtitle}>Choose how you'd like to {isEdit ? 'edit' : 'add'} your vehicle picture</Text>
+                        <Text style={styles.alertTitle}>
+                            {isEdit ? 'Edit' : 'Add'} Vehicle Photo
+                        </Text>
+                        <Text style={styles.alertSubtitle}>
+                            Choose how you'd like to{' '}
+                            {isEdit ? 'update' : 'add'} your vehicle picture
+                        </Text>
 
                         <View style={styles.alertDivider} />
 
-                        <TouchableOpacity style={styles.alertOptionRow} onPress={openCamera}>
+                        <TouchableOpacity
+                            style={styles.alertOptionRow}
+                            onPress={openCamera}
+                            activeOpacity={0.8}
+                        >
                             <View style={styles.alertOptionIcon}>
-                                <MaterialDesignIcons name="camera-alt" size={20} color={colors.primaryColor} />
+                                <MaterialDesignIcons
+                                    name="camera-alt"
+                                    size={20}
+                                    color={colors.primaryColor}
+                                />
                             </View>
                             <Text style={styles.alertOptionText}>Take Photo</Text>
                         </TouchableOpacity>
 
                         <View style={styles.alertOptionDivider} />
 
-                        <TouchableOpacity style={styles.alertOptionRow} onPress={openGallery}>
+                        <TouchableOpacity
+                            style={styles.alertOptionRow}
+                            onPress={openGallery}
+                            activeOpacity={0.8}
+                        >
                             <View style={styles.alertOptionIcon}>
-                                <MaterialDesignIcons name="photo-library" size={20} color={colors.primaryColor} />
+                                <MaterialDesignIcons
+                                    name="photo-library"
+                                    size={20}
+                                    color={colors.primaryColor}
+                                />
                             </View>
-                            <Text style={styles.alertOptionText}>Choose from Gallery</Text>
+                            <Text style={styles.alertOptionText}>
+                                Choose from Gallery
+                            </Text>
                         </TouchableOpacity>
 
                         <View style={styles.alertDivider} />
@@ -262,13 +355,14 @@ export default function AddVehicleScreen({ navigation, route }) {
                         <TouchableOpacity
                             style={styles.alertCancelRow}
                             onPress={() => setShowImageOptions(false)}
+                            activeOpacity={0.8}
                         >
                             <Text style={styles.alertCancelText}>Cancel</Text>
                         </TouchableOpacity>
-
                     </Pressable>
                 </Pressable>
             </Modal>
+
             <Snackbar
                 {...snack}
                 onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
@@ -281,23 +375,17 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: colors.primaryColor,
-        paddingTop: 60,
+        paddingTop: 50,
     },
-    scrollContent: {
-        flexGrow: 1,
-        backgroundColor: colors.primaryColor,
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        marginTop: 20,
-        paddingBottom: 50,
-    },
+
     screenHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        marginBottom: 4,
+        paddingHorizontal: '5%',
+        marginBottom: 8,
     },
+
     screenTitle: {
         fontSize: 18,
         lineHeight: 28,
@@ -306,14 +394,26 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
     },
+
     headerSpacer: {
         width: 24,
     },
+
+    scrollContent: {
+        flexGrow: 1,
+        backgroundColor: colors.primaryColor,
+        alignItems: 'center',
+        paddingHorizontal: '5%',
+        paddingTop: 20,
+        paddingBottom: 50,
+    },
+
     avatarContainer: {
         width: 120,
         height: 120,
-        marginBottom: 24,
+        marginBottom: 28,
     },
+
     avatarWrapper: {
         width: 120,
         height: 120,
@@ -323,11 +423,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     vehicleImage: {
         width: 105,
         height: 105,
         borderRadius: 16,
     },
+
     editImageButton: {
         position: 'absolute',
         bottom: 0,
@@ -341,32 +443,38 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: colors.primaryColor,
     },
+
     fieldGroup: {
         width: '100%',
         gap: 8,
     },
+
     fieldGroupSpaced: {
         width: '100%',
         gap: 8,
         marginTop: 20,
     },
+
     fieldLabel: {
         fontSize: 16,
         fontWeight: '500',
         lineHeight: 20,
         color: colors.whiteColor,
     },
+
     submitButton: {
         marginTop: 40,
         width: '100%',
     },
+
     alertOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.55)',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 40,
+        paddingHorizontal: '10%',
     },
+
     alertBox: {
         width: '100%',
         backgroundColor: colors.whiteColor,
@@ -375,6 +483,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingTop: 24,
     },
+
     alertIconCircle: {
         width: 56,
         height: 56,
@@ -384,12 +493,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: 12,
     },
+
     alertTitle: {
         fontSize: 16,
         fontWeight: '600',
         color: colors.primaryColor,
         marginBottom: 6,
     },
+
     alertSubtitle: {
         fontSize: 13,
         color: colors.darkGrey,
@@ -398,11 +509,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginBottom: 20,
     },
+
     alertDivider: {
         height: 0.5,
         backgroundColor: colors.lightGreyColor,
         width: '100%',
     },
+
     alertOptionRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -411,6 +524,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 24,
     },
+
     alertOptionIcon: {
         width: 36,
         height: 36,
@@ -419,21 +533,25 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     alertOptionText: {
         fontSize: 15,
         fontWeight: '500',
         color: colors.primaryColor,
     },
+
     alertOptionDivider: {
         height: 0.5,
         backgroundColor: colors.lightGreyColor,
         width: '100%',
     },
+
     alertCancelRow: {
         width: '100%',
         paddingVertical: 15,
         alignItems: 'center',
     },
+
     alertCancelText: {
         fontSize: 15,
         fontWeight: '500',

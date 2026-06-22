@@ -1,18 +1,50 @@
-import React,{useState} from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import {
+    StyleSheet,
+    View,
+    Text,
+    TouchableOpacity,
+    Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../../common/Colors';
 import CommonButton from '../../components/CommonButton';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import Snackbar from '../../components/Snackbar';
 import { DeleteVehicle } from '../../app/features/vehicleSlice';
 
 export default function VehicleDetailScreen({ navigation, route }) {
-    const { vehicle } = route.params;
-    const { vehicleType, licensePlate, make, model, color, isActive, _id, vehiclePhoto } = vehicle;
+    const { vehicle } = route.params ?? {};
+    const {
+        vehicleType,
+        licensePlate,
+        make,
+        model,
+        color,
+        isActive,
+        _id,
+        vehiclePhoto,
+    } = vehicle ?? {};
+
     const dispatch = useDispatch();
-    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const [snack, setSnack] = useState({
+        visible: false,
+        type: 'default',
+        title: '',
+        message: '',
+    });
+
+    const showError = (message, title = 'Error') => {
+        setSnack({ visible: true, type: 'error', title, message });
+    };
+
+    const showSuccess = (message, title = 'Success') => {
+        setSnack({ visible: true, type: 'success', title, message });
+    };
 
     const getVehicleIcon = () => {
         const type = vehicleType?.toLowerCase();
@@ -21,157 +53,256 @@ export default function VehicleDetailScreen({ navigation, route }) {
         return 'directions-car';
     };
 
-     const handleDeleteVehicle = async () => {
-            try {
-                const response = await dispatch(DeleteVehicle(_id)).unwrap();
-                console.log("Response : ", response);
-                if (response.status === 'success' || response.message) {
-                    setSnack({ visible: true, type: 'success', title: 'Vehicle Deleted Successfully!', message: 'Your vehicle deleted successfully.' });
-                    navigation.goBack();
-                }
-            } catch (error) {
-                console.log("Error : ", error);
-                setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to delete vehicle.' });
+    const handleDeleteVehicle = async () => {
+        try {
+            setDeleteLoading(true);
+
+            const response = await dispatch(DeleteVehicle(_id)).unwrap();
+
+            if (response?.success || response?.message) {
+                showSuccess(
+                    response?.message || 'Your vehicle has been removed.',
+                    'Vehicle Deleted!'
+                );
+                setTimeout(() => navigation.goBack(), 1200);
+            } else {
+                showError(
+                    response?.message || 'Failed to delete vehicle.',
+                    'Delete Failed'
+                );
             }
-    
-        };
-    
+        } catch (error) {
+            const message =
+                typeof error === 'string'
+                    ? error
+                    : error?.message || 'Failed to delete vehicle. Please try again.';
+
+            showError(message, 'Delete Failed');
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+
             <View style={styles.screenHeader}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <MaterialDesignIcons name="arrow-back-ios" size={24} color={colors.whiteColor} />
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <MaterialDesignIcons
+                        name="arrow-back-ios"
+                        size={24}
+                        color={colors.whiteColor}
+                    />
                 </TouchableOpacity>
                 <Text style={styles.screenTitle}>Vehicle Details</Text>
-                <View />
+                <View style={styles.headerSpacer} />
             </View>
 
-            <ScrollView
+            <KeyboardAwareScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                enableOnAndroid
+                extraScrollHeight={30}
+                extraHeight={120}
             >
-                {/* Hero Photo */}
                 <View style={styles.heroContainer}>
                     {vehiclePhoto ? (
-                        <Image source={{ uri: vehiclePhoto }} style={styles.heroImage} />
+                        <Image
+                            source={{ uri: vehiclePhoto }}
+                            style={styles.heroImage}
+                        />
                     ) : (
                         <View style={styles.heroPlaceholder}>
-                            <MaterialDesignIcons name={getVehicleIcon()} size={64} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name={getVehicleIcon()}
+                                size={64}
+                                color={colors.secondaryColor}
+                            />
                         </View>
                     )}
                     <View style={styles.typeBadge}>
-                        <MaterialDesignIcons name={getVehicleIcon()} size={13} color={colors.secondaryColor} />
-                        <Text style={styles.typeBadgeText}>{vehicleType}</Text>
+                        <MaterialDesignIcons
+                            name={getVehicleIcon()}
+                            size={13}
+                            color={colors.secondaryColor}
+                        />
+                        <Text style={styles.typeBadgeText}>{vehicleType ?? '—'}</Text>
                     </View>
                 </View>
 
-                {/* Vehicle Name */}
                 <View style={styles.nameSection}>
-                    <Text style={styles.vehicleName}>{make} {model}</Text>
+                    <Text style={styles.vehicleName} numberOfLines={1}>
+                        {make} {model}
+                    </Text>
                     <View style={styles.platePill}>
-                        <Text style={styles.platePillText}>{licensePlate}</Text>
+                        <Text style={styles.platePillText}>
+                            {licensePlate ?? '—'}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Info Cards */}
                 <View style={styles.infoGrid}>
                     <View style={styles.infoCard}>
                         <View style={styles.infoIconBox}>
-                            <MaterialDesignIcons name="business" size={18} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name="business"
+                                size={18}
+                                color={colors.secondaryColor}
+                            />
                         </View>
                         <Text style={styles.infoLabel}>Company</Text>
-                        <Text style={styles.infoValue}>{make}</Text>
+                        <Text style={styles.infoValue} numberOfLines={1}>
+                            {make ?? '—'}
+                        </Text>
                     </View>
 
                     <View style={styles.infoCard}>
                         <View style={styles.infoIconBox}>
-                            <MaterialDesignIcons name="directions-car" size={18} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name="directions-car"
+                                size={18}
+                                color={colors.secondaryColor}
+                            />
                         </View>
                         <Text style={styles.infoLabel}>Model</Text>
-                        <Text style={styles.infoValue}>{model}</Text>
+                        <Text style={styles.infoValue} numberOfLines={1}>
+                            {model ?? '—'}
+                        </Text>
                     </View>
 
                     <View style={styles.infoCard}>
                         <View style={styles.infoIconBox}>
-                            <MaterialDesignIcons name="category" size={18} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name="category"
+                                size={18}
+                                color={colors.secondaryColor}
+                            />
                         </View>
                         <Text style={styles.infoLabel}>Type</Text>
-                        <Text style={styles.infoValue}>{vehicleType}</Text>
+                        <Text style={styles.infoValue} numberOfLines={1}>
+                            {vehicleType ?? '—'}
+                        </Text>
                     </View>
 
                     <View style={styles.infoCard}>
                         <View style={styles.infoIconBox}>
-                            <MaterialDesignIcons name="palette" size={18} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name="palette"
+                                size={18}
+                                color={colors.secondaryColor}
+                            />
                         </View>
                         <Text style={styles.infoLabel}>Color</Text>
-                        <Text style={styles.infoValue}>{color ?? 'N/A'}</Text>
+                        <Text style={styles.infoValue} numberOfLines={1}>
+                            {color ?? '—'}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Plate Number Row */}
                 <View style={styles.detailCard}>
                     <View style={styles.detailRow}>
                         <View style={styles.detailIconBox}>
-                            <MaterialDesignIcons name="confirmation-number" size={18} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name="confirmation-number"
+                                size={18}
+                                color={colors.secondaryColor}
+                            />
                         </View>
                         <View style={styles.detailTextGroup}>
                             <Text style={styles.detailLabel}>Plate Number</Text>
-                            <Text style={styles.detailValue}>{licensePlate}</Text>
+                            <Text style={styles.detailValue}>
+                                {licensePlate ?? '—'}
+                            </Text>
                         </View>
                         <View style={styles.verifiedBadge}>
-                            <MaterialDesignIcons name="verified" size={14} color={colors.greenColor} />
+                            <MaterialDesignIcons
+                                name="verified"
+                                size={14}
+                                color={colors.greenColor}
+                            />
                             <Text style={styles.verifiedText}>Verified</Text>
                         </View>
                     </View>
                 </View>
 
-                {/* Status Row */}
                 <View style={styles.detailCard}>
                     <View style={styles.detailRow}>
                         <View style={styles.detailIconBox}>
-                            <MaterialDesignIcons name="radio-button-checked" size={18} color={colors.secondaryColor} />
+                            <MaterialDesignIcons
+                                name="radio-button-checked"
+                                size={18}
+                                color={colors.secondaryColor}
+                            />
                         </View>
                         <View style={styles.detailTextGroup}>
                             <Text style={styles.detailLabel}>Status</Text>
-                            <Text style={styles.detailValue}>{isActive ? 'Active' : 'Inactive'}</Text>
+                            <Text style={styles.detailValue}>
+                                {isActive ? 'Active' : 'Inactive'}
+                            </Text>
                         </View>
-                        <View style={[styles.activeBadge, !isActive && styles.inactiveBadge]}>
-                            <View style={[styles.activeDot, !isActive && styles.inactiveDot]} />
-                            <Text style={[styles.activeText, !isActive && styles.inactiveText]}>
+                        <View
+                            style={[
+                                styles.activeBadge,
+                                !isActive && styles.inactiveBadge,
+                            ]}
+                        >
+                            <View
+                                style={[
+                                    styles.activeDot,
+                                    !isActive && styles.inactiveDot,
+                                ]}
+                            />
+                            <Text
+                                style={[
+                                    styles.activeText,
+                                    !isActive && styles.inactiveText,
+                                ]}
+                            >
                                 {isActive ? 'In Use' : 'Not In Use'}
                             </Text>
                         </View>
                     </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
+                <View style={styles.actionRow}>
                     <CommonButton
-                        title={'Remove Vehicle'}
+                        title="Remove Vehicle"
                         textColor={colors.redColor}
                         color={colors.lightRedColor}
-                        isIcon={true}
-                        icon={'delete'}
+                        isIcon
+                        icon="delete"
                         iconColor={colors.redColor}
                         onPress={handleDeleteVehicle}
-                        style={{ width: '48%' }}
+                        loading={deleteLoading}
+                        style={styles.actionButton}
                     />
                     <CommonButton
-                        title={'Edit Vehicle'}
+                        title="Edit Vehicle"
                         textColor={colors.whiteColor}
                         color={colors.secondaryColor}
-                        isIcon={true}
-                        icon={'edit'}
+                        isIcon
+                        icon="edit"
                         iconColor={colors.whiteColor}
-                        style={{ width: '48%' }}
-                        onPress={() => navigation.navigate('AddVehicleScreen', { vehicle, isEdit: true })}
+                        style={styles.actionButton}
+                        onPress={() =>
+                            navigation.navigate('AddVehicleScreen', {
+                                vehicle,
+                                isEdit: true,
+                            })
+                        }
                     />
                 </View>
-<Snackbar
+            </KeyboardAwareScrollView>
+
+            <Snackbar
                 {...snack}
                 onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
             />
-            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -180,22 +311,17 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: colors.primaryColor,
-        paddingTop: 60,
+        paddingTop: 50,
     },
-    scrollContent: {
-        flexGrow: 1,
-        backgroundColor: colors.primaryColor,
-        paddingHorizontal: 16,
-        marginTop: 20,
-        paddingBottom: 50,
-    },
+
     screenHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        marginBottom: 4,
+        paddingHorizontal: '5%',
+        marginBottom: 8,
     },
+
     screenTitle: {
         fontSize: 18,
         lineHeight: 28,
@@ -205,7 +331,18 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 
-    // Hero
+    headerSpacer: {
+        width: 24,
+    },
+
+    scrollContent: {
+        flexGrow: 1,
+        backgroundColor: colors.primaryColor,
+        paddingHorizontal: '5%',
+        paddingTop: 20,
+        paddingBottom: 50,
+    },
+
     heroContainer: {
         width: '100%',
         height: 200,
@@ -215,17 +352,20 @@ const styles = StyleSheet.create({
         borderWidth: 0.5,
         borderColor: colors.borderColor,
     },
+
     heroImage: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
     },
+
     heroPlaceholder: {
         flex: 1,
         backgroundColor: colors.cardWhiteOpacity,
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     typeBadge: {
         position: 'absolute',
         top: 12,
@@ -240,25 +380,28 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         paddingHorizontal: 10,
     },
+
     typeBadgeText: {
         fontSize: 12,
         fontWeight: '500',
         color: colors.secondaryColor,
     },
 
-    // Name section
     nameSection: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 16,
+        gap: 12,
     },
+
     vehicleName: {
         fontSize: 20,
         fontWeight: '700',
         color: colors.whiteColor,
         flex: 1,
     },
+
     platePill: {
         backgroundColor: 'rgba(255,255,255,0.1)',
         borderWidth: 0.5,
@@ -266,7 +409,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingVertical: 5,
         paddingHorizontal: 12,
+        flexShrink: 0,
     },
+
     platePillText: {
         fontSize: 13,
         fontWeight: '600',
@@ -274,13 +419,13 @@ const styles = StyleSheet.create({
         letterSpacing: 1.5,
     },
 
-    // Info grid
     infoGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 10,
         marginBottom: 12,
     },
+
     infoCard: {
         width: '47.5%',
         backgroundColor: colors.cardWhiteOpacity,
@@ -290,6 +435,7 @@ const styles = StyleSheet.create({
         padding: 14,
         gap: 6,
     },
+
     infoIconBox: {
         width: 36,
         height: 36,
@@ -298,18 +444,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     infoLabel: {
         fontSize: 12,
         color: 'rgba(255,255,255,0.45)',
         marginTop: 4,
     },
+
     infoValue: {
         fontSize: 14,
         fontWeight: '600',
         color: colors.whiteColor,
     },
 
-    // Detail cards
     detailCard: {
         backgroundColor: colors.cardWhiteOpacity,
         borderWidth: 0.5,
@@ -318,11 +465,13 @@ const styles = StyleSheet.create({
         padding: 14,
         marginBottom: 10,
     },
+
     detailRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
+
     detailIconBox: {
         width: 40,
         height: 40,
@@ -330,21 +479,26 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,188,0,0.12)',
         alignItems: 'center',
         justifyContent: 'center',
+        flexShrink: 0,
     },
+
     detailTextGroup: {
         flex: 1,
         gap: 2,
     },
+
     detailLabel: {
         fontSize: 12,
         color: 'rgba(255,255,255,0.45)',
     },
+
     detailValue: {
         fontSize: 15,
         fontWeight: '600',
         color: colors.whiteColor,
         letterSpacing: 0.5,
     },
+
     verifiedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -353,12 +507,15 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingVertical: 4,
         paddingHorizontal: 8,
+        flexShrink: 0,
     },
+
     verifiedText: {
         fontSize: 12,
         fontWeight: '500',
         color: colors.greenColor,
     },
+
     activeBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -367,25 +524,43 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingVertical: 4,
         paddingHorizontal: 8,
+        flexShrink: 0,
     },
+
     activeDot: {
         width: 6,
         height: 6,
         borderRadius: 3,
         backgroundColor: colors.blueColor,
     },
+
     activeText: {
         fontSize: 12,
         fontWeight: '500',
         color: colors.blueColor,
     },
+
     inactiveBadge: {
         backgroundColor: colors.lightRedColor,
     },
+
     inactiveDot: {
         backgroundColor: colors.redColor,
     },
+
     inactiveText: {
         color: colors.redColor,
+    },
+
+    actionRow: {
+        flexDirection: 'row',
+        gap: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 40,
+    },
+
+    actionButton: {
+        flex: 1,
     },
 });

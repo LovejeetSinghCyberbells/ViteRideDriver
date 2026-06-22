@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
+import {
+    StyleSheet,
+    View,
+    Text,
+    TouchableOpacity,
+    Image,
+    Modal,
+    Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../../common/Colors';
@@ -8,30 +17,45 @@ import CommonButton from '../../components/CommonButton';
 import CommonTextField from '../../components/CommonTextField';
 import Snackbar from '../../components/Snackbar';
 import { EditProfile } from '../../app/features/profileSlice';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 
 export default function EditProfileScreen({ navigation, route }) {
-    const { profile } = route.params;
+    const { profile } = route.params ?? {};
     const dispatch = useDispatch();
+
     const [profileImage, setProfileImage] = useState(null);
     const [showImageOptions, setShowImageOptions] = useState(false);
-    const [name, setName] = useState(null);
-    const [email, setEmail] = useState(null);
-    const [phone, setPhone] = useState(null);
-    const [address, setAddress] = useState(null);
-    const [snack, setSnack] = useState({ visible: false, type: 'default', title: '', message: '' });
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [address, setAddress] = useState('');
+    const [loading, setLoading] = useState(false);
 
+    const [snack, setSnack] = useState({
+        visible: false,
+        type: 'default',
+        title: '',
+        message: '',
+    });
+
+    const showError = (message, title = 'Error') => {
+        setSnack({ visible: true, type: 'error', title, message });
+    };
+
+    const showSuccess = (message, title = 'Success') => {
+        setSnack({ visible: true, type: 'success', title, message });
+    };
 
     useEffect(() => {
-        console.log("Profile from edit screen :", profile);
         if (profile) {
-            setName(profile.name);
-            setEmail(profile.email);
-            setPhone(profile.phone);
-            setAddress(profile.address);
-            setProfileImage(profile.profilePicture);
+            setName(profile.name ?? '');
+            setEmail(profile.email ?? '');
+            setPhone(profile.phone ?? '');
+            setAddress(profile.address ?? '');
+            setProfileImage(profile.profilePicture ?? null);
         }
     }, [profile]);
+
 
     const handleEditImage = () => setShowImageOptions(true);
 
@@ -63,59 +87,93 @@ export default function EditProfileScreen({ navigation, route }) {
         }, 300);
     };
 
-    const handleEditProfile = async () => {
 
+    const validate = () => {
         if (!name.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your name.' });
-            return;
+            showError('Please enter your name.');
+            return false;
         }
         if (!email.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your email address.' });
-            return;
+            showError('Please enter your email address.');
+            return false;
         }
         if (!phone.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please enter your phone number.' });
-            return;
+            showError('Please enter your phone number.');
+            return false;
         }
-        if (!profileImage.trim()) {
-            setSnack({ visible: true, type: 'error', title: 'Error', message: 'Please submit your profile Image.' });
-            return;
+        if (!profileImage) {
+            showError('Please add a profile photo.');
+            return false;
         }
-        try {
-            const userData = {
-                "name": name.trim(),
-                "email": email.trim(),
-                "profilePicture": profileImage,
-                "phone": phone
-            }
+        return true;
+    };
 
-            console.log("UserData : ",userData);
+
+    const handleEditProfile = async () => {
+        if (!validate()) return;
+
+        try {
+            setLoading(true);
+
+            const userData = {
+                name: name.trim(),
+                email: email.trim(),
+                phone: phone.trim(),
+                address: address.trim(),
+                profilePicture: profileImage,
+            };
+
             const response = await dispatch(EditProfile(userData)).unwrap();
-            console.log("Response : ", response);
-            if (response.status === 'success' || response.message) {
-                setSnack({ visible: true, type: 'success', title: 'Profile Edited Successfully!', message: 'Your profile was edietd successfully.' });
-                navigation.goBack();
+
+            if (response?.success || response?.message) {
+                showSuccess(
+                    response?.message || 'Your profile has been updated.',
+                    'Profile Updated!'
+                );
+                setTimeout(() => navigation.goBack(), 1200);
+            } else {
+                showError(
+                    response?.message || 'Failed to update profile.',
+                    'Update Failed'
+                );
             }
         } catch (error) {
-            console.log("Error : ", error);
-            setSnack({ visible: true, type: 'error', title: 'Error', message: error ?? 'Failed to Edit Profile.' });
-        }
+            const message =
+                typeof error === 'string'
+                    ? error
+                    : error?.message || 'Failed to update profile. Please try again.';
 
+            showError(message, 'Update Failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
             <View style={styles.screenHeader}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <MaterialDesignIcons name="arrow-back-ios" size={24} color={colors.whiteColor} />
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <MaterialDesignIcons
+                        name="arrow-back-ios"
+                        size={24}
+                        color={colors.whiteColor}
+                    />
                 </TouchableOpacity>
                 <Text style={styles.screenTitle}>Edit Profile</Text>
                 <View style={styles.headerSpacer} />
             </View>
 
-            <ScrollView
+            <KeyboardAwareScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                enableOnAndroid
+                extraScrollHeight={30}
+                extraHeight={120}
             >
                 <View style={styles.avatarContainer}>
                     <View style={styles.avatarWrapper}>
@@ -128,39 +186,67 @@ export default function EditProfileScreen({ navigation, route }) {
                             style={styles.profileImage}
                         />
                     </View>
-                    <TouchableOpacity style={styles.editImageButton} onPress={handleEditImage}>
-                        <MaterialDesignIcons name="edit" size={14} color={colors.whiteColor} />
+                    <TouchableOpacity
+                        style={styles.editImageButton}
+                        onPress={handleEditImage}
+                        activeOpacity={0.8}
+                    >
+                        <MaterialDesignIcons
+                            name="edit"
+                            size={14}
+                            color={colors.whiteColor}
+                        />
                     </TouchableOpacity>
                 </View>
 
                 <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>Full Name</Text>
-                    <CommonTextField placeholder={'Please Enter Your Name.'} value={name} onChangeText={setName} />
+                    <CommonTextField
+                        placeholder="Please enter your name"
+                        value={name}
+                        onChangeText={setName}
+                    />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Email</Text>
-                    <CommonTextField placeholder={'Please Enter Your Email.'} value={email} onChangeText={setEmail} />
+                    <CommonTextField
+                        placeholder="Please enter your email"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Mobile Number</Text>
-                    <CommonTextField placeholder={'Please Enter Your Mobile Number.'} value={phone} onChangeText={setPhone} />
+                    <CommonTextField
+                        placeholder="Please enter your mobile number"
+                        value={phone}
+                        onChangeText={setPhone}
+                        keyboardType="phone-pad"
+                    />
                 </View>
 
                 <View style={styles.fieldGroupSpaced}>
                     <Text style={styles.fieldLabel}>Address</Text>
-                    <CommonTextField placeholder={'Please Enter Your Address.'} value={address} onChangeText={setAddress} />
+                    <CommonTextField
+                        placeholder="Please enter your address"
+                        value={address}
+                        onChangeText={setAddress}
+                    />
                 </View>
 
                 <CommonButton
-                    title={'Submit'}
+                    title="Save Changes"
                     textColor={colors.whiteColor}
                     color={colors.secondaryColor}
                     style={styles.submitButton}
                     onPress={handleEditProfile}
+                    loading={loading}
                 />
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <Modal
                 visible={showImageOptions}
@@ -168,32 +254,58 @@ export default function EditProfileScreen({ navigation, route }) {
                 animationType="fade"
                 onRequestClose={() => setShowImageOptions(false)}
             >
-                <Pressable style={styles.alertOverlay} onPress={() => setShowImageOptions(false)}>
-                    <Pressable style={styles.alertBox} onPress={() => { }}>
-
+                <Pressable
+                    style={styles.alertOverlay}
+                    onPress={() => setShowImageOptions(false)}
+                >
+                    <Pressable style={styles.alertBox} onPress={() => {}}>
                         <View style={styles.alertIconCircle}>
-                            <MaterialDesignIcons name="add-a-photo" size={26} color={colors.primaryColor} />
+                            <MaterialDesignIcons
+                                name="add-a-photo"
+                                size={26}
+                                color={colors.primaryColor}
+                            />
                         </View>
 
                         <Text style={styles.alertTitle}>Update Profile Photo</Text>
-                        <Text style={styles.alertSubtitle}>Choose how you'd like to update your picture</Text>
+                        <Text style={styles.alertSubtitle}>
+                            Choose how you'd like to update your picture
+                        </Text>
 
                         <View style={styles.alertDivider} />
 
-                        <TouchableOpacity style={styles.alertOptionRow} onPress={openCamera}>
+                        <TouchableOpacity
+                            style={styles.alertOptionRow}
+                            onPress={openCamera}
+                            activeOpacity={0.8}
+                        >
                             <View style={styles.alertOptionIcon}>
-                                <MaterialDesignIcons name="camera-alt" size={20} color={colors.primaryColor} />
+                                <MaterialDesignIcons
+                                    name="camera-alt"
+                                    size={20}
+                                    color={colors.primaryColor}
+                                />
                             </View>
                             <Text style={styles.alertOptionText}>Take Photo</Text>
                         </TouchableOpacity>
 
                         <View style={styles.alertOptionDivider} />
 
-                        <TouchableOpacity style={styles.alertOptionRow} onPress={openGallery}>
+                        <TouchableOpacity
+                            style={styles.alertOptionRow}
+                            onPress={openGallery}
+                            activeOpacity={0.8}
+                        >
                             <View style={styles.alertOptionIcon}>
-                                <MaterialDesignIcons name="photo-library" size={20} color={colors.primaryColor} />
+                                <MaterialDesignIcons
+                                    name="photo-library"
+                                    size={20}
+                                    color={colors.primaryColor}
+                                />
                             </View>
-                            <Text style={styles.alertOptionText}>Choose from Gallery</Text>
+                            <Text style={styles.alertOptionText}>
+                                Choose from Gallery
+                            </Text>
                         </TouchableOpacity>
 
                         <View style={styles.alertDivider} />
@@ -201,13 +313,14 @@ export default function EditProfileScreen({ navigation, route }) {
                         <TouchableOpacity
                             style={styles.alertCancelRow}
                             onPress={() => setShowImageOptions(false)}
+                            activeOpacity={0.8}
                         >
                             <Text style={styles.alertCancelText}>Cancel</Text>
                         </TouchableOpacity>
-
                     </Pressable>
                 </Pressable>
             </Modal>
+
             <Snackbar
                 {...snack}
                 onDismiss={() => setSnack(s => ({ ...s, visible: false }))}
@@ -220,23 +333,17 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: colors.primaryColor,
-        paddingTop: 60,
+        paddingTop: 50,
     },
-    scrollContent: {
-        flexGrow: 1,
-        backgroundColor: colors.primaryColor,
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        marginTop: 20,
-        paddingBottom: 50,
-    },
+
     screenHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        marginBottom: 4,
+        paddingHorizontal: '5%',
+        marginBottom: 8,
     },
+
     screenTitle: {
         fontSize: 18,
         lineHeight: 28,
@@ -245,14 +352,26 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
     },
+
     headerSpacer: {
         width: 24,
     },
+
+    scrollContent: {
+        flexGrow: 1,
+        backgroundColor: colors.primaryColor,
+        alignItems: 'center',
+        paddingHorizontal: '5%',
+        paddingTop: 20,
+        paddingBottom: 50,
+    },
+
     avatarContainer: {
         width: 120,
         height: 120,
-        marginBottom: 24,
+        marginBottom: 28,
     },
+
     avatarWrapper: {
         width: 120,
         height: 120,
@@ -262,11 +381,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     profileImage: {
         width: 105,
         height: 105,
         borderRadius: 16,
     },
+
     editImageButton: {
         position: 'absolute',
         bottom: 0,
@@ -280,32 +401,38 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: colors.primaryColor,
     },
+
     fieldGroup: {
         width: '100%',
         gap: 8,
     },
+
     fieldGroupSpaced: {
         width: '100%',
         gap: 8,
         marginTop: 20,
     },
+
     fieldLabel: {
         fontSize: 16,
         fontWeight: '500',
         lineHeight: 20,
         color: colors.whiteColor,
     },
+
     submitButton: {
         marginTop: 40,
         width: '100%',
     },
+
     alertOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.55)',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 40,
+        paddingHorizontal: '10%',
     },
+
     alertBox: {
         width: '100%',
         backgroundColor: colors.whiteColor,
@@ -314,6 +441,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingTop: 24,
     },
+
     alertIconCircle: {
         width: 56,
         height: 56,
@@ -323,12 +451,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: 12,
     },
+
     alertTitle: {
         fontSize: 16,
         fontWeight: '600',
         color: colors.primaryColor,
         marginBottom: 6,
     },
+
     alertSubtitle: {
         fontSize: 13,
         color: colors.darkGrey,
@@ -337,11 +467,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginBottom: 20,
     },
+
     alertDivider: {
         height: 0.5,
         backgroundColor: colors.lightGreyColor,
         width: '100%',
     },
+
     alertOptionRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -350,6 +482,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 24,
     },
+
     alertOptionIcon: {
         width: 36,
         height: 36,
@@ -358,21 +491,25 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     alertOptionText: {
         fontSize: 15,
         fontWeight: '500',
         color: colors.primaryColor,
     },
+
     alertOptionDivider: {
         height: 0.5,
         backgroundColor: colors.lightGreyColor,
         width: '100%',
     },
+
     alertCancelRow: {
         width: '100%',
         paddingVertical: 15,
         alignItems: 'center',
     },
+
     alertCancelText: {
         fontSize: 15,
         fontWeight: '500',
