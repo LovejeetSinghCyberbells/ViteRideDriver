@@ -18,9 +18,21 @@ import Snackbar from '../../components/Snackbar';
 import { clearUserData } from '../../units/asyncStorageManager';
 
 const APP_SETTINGS = [
-    { icon: 'settings', title: 'App Preferences' },
-    { icon: 'help-outline', title: 'Help & Support' },
-    { icon: 'info-outline', title: 'About App' },
+    {
+        icon: 'settings',
+        title: 'App Preferences',
+        navigateTo: 'AppPreferencesScreen'
+    },
+    {
+        icon: 'help-outline',
+        title: 'Help & Support',
+        navigateTo: 'HelpAndSupportScreen'  
+    },
+    {
+        icon: 'info-outline',
+        title: 'About App',
+        navigateTo: 'AboutAppScreen'
+    },
 ];
 
 const AppSettingCard = ({ icon, title, onPress }) => (
@@ -188,7 +200,7 @@ export default function ProfileScreen({ navigation }) {
                             key={index}
                             icon={setting.icon}
                             title={setting.title}
-                            onPress={() => { }}
+                            onPress={() => navigation.navigate(setting.navigateTo)}
                         />
                     ))}
 

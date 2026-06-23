@@ -16,6 +16,9 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import VehicleListScreen from '../screens/profile/VehicleListScreen';
 import AddVehicleScreen from '../screens/profile/AddVehicleScreen';
 import VehicleDetailScreen from '../screens/profile/VehicleDetailScreen';
+import AboutAppScreen from '../screens/profile/AboutAppScreen';
+import HelpAndSupportScreen from '../screens/profile/HelpAndSupportScreen';
+import AppPreferencesScreen from '../screens/profile/AppPreferencesScreen';
 
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import colors from '../common/Colors';
@@ -52,7 +55,9 @@ export const ProfileNavigator = () => (
         <Stack.Screen name="VehicleListScreen" component={VehicleListScreen} />
         <Stack.Screen name="AddVehicleScreen" component={AddVehicleScreen} />
         <Stack.Screen name="VehicleDetailScreen" component={VehicleDetailScreen} />
-
+        <Stack.Screen name="AboutAppScreen" component={AboutAppScreen} />
+        <Stack.Screen name="HelpAndSupportScreen" component={HelpAndSupportScreen} />
+        <Stack.Screen name="AppPreferencesScreen" component={AppPreferencesScreen} />
     </Stack.Navigator>
 );
 
@@ -211,7 +216,8 @@ const BottomTabs = () => {
                     tabBarStyle: (() => {
                         const routeName = getFocusedRouteNameFromRoute(route) ?? 'ProfileScreens';
                         if (routeName === 'MyDetailsScreen' || routeName === 'ReviewsScreen' || routeName === 'EditProfileScreen' 
-                            || routeName === 'VehicleListScreen' || routeName === 'AddVehicleScreen' || routeName === 'VehicleDetailScreen') {
+                            || routeName === 'VehicleListScreen' || routeName === 'AddVehicleScreen' || routeName === 'VehicleDetailScreen'
+                        || routeName === 'HelpAndSupportScreen'  || routeName === 'AboutAppScreen'  || routeName === 'AppPreferencesScreen') {
                             return { display: 'none' };
                         }
                         return defaultTabBarStyle;

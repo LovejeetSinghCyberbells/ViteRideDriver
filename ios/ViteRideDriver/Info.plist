@@ -8,6 +8,13 @@
 <key>NSCameraUsageDescription</key>
 <string>ViteRide needs camera access to take a profile picture.</string>
 
+
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>ViteRide Driver needs your location to receive nearby ride requests.</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>ViteRide Driver tracks your location while you're online.</string>
+
+
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
