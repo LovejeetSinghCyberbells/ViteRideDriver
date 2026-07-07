@@ -70,7 +70,7 @@ export default function Snackbar({ visible, type = 'default', title, message, ac
 const styles = StyleSheet.create({
     snackbar: {
         position: 'absolute',
-        top: 20,
+        top: 80,
         left: 16,
         right: 16,
         flexDirection: 'row',

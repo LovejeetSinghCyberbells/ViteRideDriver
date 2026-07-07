@@ -22,31 +22,60 @@ const ANIMATION_DURATION = 300;
 const STATUS = {
     ARRIVE_TO_PICKUP: 'arriveToPickUp',
     ARRIVED_AT_PICKUP: 'arrivedAtPickUp',
-    START_TRIP: 'startTrip',
+    TRIP_IN_PROGRESS: 'tripInProgress',
     FINISH_TRIP: 'finishTrip',
 };
 
 const RideBottomSheet = forwardRef((props, ref) => {
     const {
         pickupAddress,
+        dropoffAddress,
         onCall,
         onMessage,
         onSubmitOtp,
+        onArrivedAtPickup,
+        onTripStart,
         onTripFinished,
+        pickupLegCompleted = false,
+        tripStarted = false,
+        tripCompleted = false,
     } = props;
 
     const [visible, setVisible] = useState(false);
     const [otp, setOtp] = useState('');
     const [status, setStatus] = useState(STATUS.ARRIVE_TO_PICKUP);
     const [buttonTitle, setButtonTitle] = useState('Arrived at Pick-up');
+    const isPickupStage = status === STATUS.ARRIVE_TO_PICKUP;
+    const isOtpStage = status === STATUS.ARRIVED_AT_PICKUP;
+    const isTripActive = status === STATUS.TRIP_IN_PROGRESS || status === STATUS.FINISH_TRIP;
+    const sheetTitle = isTripActive ? 'Drop-off Location' : 'Pick-up Location';
+    const sheetAddress = isTripActive ? dropoffAddress || 'Sam Nujoma Dr, Klein Windhoek, Namibia' : pickupAddress || 'No address provided';
+    const helperText = isOtpStage
+        ? 'Enter passenger OTP to start the trip.'
+        : isTripActive
+            ? 'Trip is in progress. Reach the destination and finish the ride.'
+            : 'Arriving at the pickup point.';
 
     const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
 
+    useEffect(() => {
+        if (tripCompleted) {
+            setStatus(STATUS.FINISH_TRIP);
+            setButtonTitle('Finish Trip');
+        } else if (tripStarted) {
+            setStatus(STATUS.TRIP_IN_PROGRESS);
+            setButtonTitle('Trip in Progress');
+        } else if (pickupLegCompleted) {
+            setStatus(STATUS.ARRIVE_TO_PICKUP);
+            setButtonTitle('Arrived at Pick-up');
+        }
+    }, [pickupLegCompleted, tripStarted, tripCompleted]);
+
     useImperativeHandle(ref, () => ({
         open: animateIn,
         close: animateOut,
-    }), []);
+    }), [animateIn, animateOut]);
 
     const animateOut = useCallback((callback) => {
         Animated.parallel([
@@ -102,22 +131,37 @@ const RideBottomSheet = forwardRef((props, ref) => {
         if (status === STATUS.ARRIVE_TO_PICKUP) {
             setStatus(STATUS.ARRIVED_AT_PICKUP);
             setButtonTitle('Start Trip');
+            onArrivedAtPickup?.();
+            return;
         }
-        else if (status === STATUS.ARRIVED_AT_PICKUP) {
-            setStatus(STATUS.FINISH_TRIP);
-        } else if (status === STATUS.FINISH_TRIP) {
+
+        if (status === STATUS.ARRIVED_AT_PICKUP) {
+            if (otp.length !== 6) {
+                return;
+            }
+
+            onSubmitOtp?.(otp);
+            onTripStart?.();
+            setStatus(STATUS.TRIP_IN_PROGRESS);
+            setButtonTitle('Trip in Progress');
+            return;
+        }
+
+        if (status === STATUS.FINISH_TRIP) {
             onTripFinished?.();
             animateOut();
         }
     };
 
     const handleSubmitOtp = () => {
-        if (otp.length === 6 && onSubmitOtp) {
-            onSubmitOtp(otp);
-            // Optional: Auto proceed to Start Trip after OTP
-            // setStatus(STATUS.START_TRIP);
-            // setButtonTitle('Finish Trip');
+        if (otp.length !== 6) {
+            return;
         }
+
+        onSubmitOtp?.(otp);
+        onTripStart?.();
+        setStatus(STATUS.TRIP_IN_PROGRESS);
+        setButtonTitle('Trip in Progress');
     };
 
     return (
@@ -127,38 +171,39 @@ const RideBottomSheet = forwardRef((props, ref) => {
             animationType="none"
             statusBarTranslucent
             onRequestClose={animateOut}
+            style={{ backgroundColor: colors.primaryColorOpacity }}
         >
             <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: backdropColor }]}>
                 <Pressable style={StyleSheet.absoluteFillObject} onPress={animateOut} />
             </Animated.View>
 
             <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-                {/* Handle */}
                 <View style={styles.handleBar} />
 
                 {status !== STATUS.FINISH_TRIP && (
                     <>
-                        {/* Title & Address */}
-                        <Text style={styles.title}>Pick-up Location</Text>
-                        <Text style={styles.address}>{pickupAddress || 'No address provided'}</Text>
+                        <Text style={styles.title}>{sheetTitle}</Text>
+                        <Text style={styles.address}>{sheetAddress}</Text>
+                        <Text style={styles.helperText}>{helperText}</Text>
 
-                        {/* Action Buttons */}
-                        <View style={styles.actionRow}>
-                            <TouchableOpacity style={styles.actionButton} onPress={onCall} activeOpacity={0.8}>
-                                <MaterialDesignIcons name="call" size={18} color={colors.blackColor} />
-                                <Text style={styles.actionButtonText}>Call</Text>
-                            </TouchableOpacity>
+                        {!isTripActive && (
+                            <View style={styles.actionRow}>
+                                <TouchableOpacity style={styles.actionButton} onPress={onCall} activeOpacity={0.8}>
+                                    <MaterialDesignIcons name="call" size={18} color={colors.blackColor} />
+                                    <Text style={styles.actionButtonText}>Call</Text>
+                                </TouchableOpacity>
 
-                            <TouchableOpacity style={styles.actionButton} onPress={onMessage} activeOpacity={0.8}>
-                                <MaterialDesignIcons name="chat-bubble-outline" size={18} color={colors.blackColor} />
-                                <Text style={styles.actionButtonText}>Message</Text>
-                            </TouchableOpacity>
-                        </View>
+                                <TouchableOpacity style={styles.actionButton} onPress={onMessage} activeOpacity={0.8}>
+                                    <MaterialDesignIcons name="chat-bubble-outline" size={18} color={colors.blackColor} />
+                                    <Text style={styles.actionButtonText}>Message</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </>
                 )}
 
                 {/* OTP Input - Show only after arriving */}
-                {(status === STATUS.ARRIVED_AT_PICKUP || status === STATUS.START_TRIP) && (
+                {status === STATUS.ARRIVED_AT_PICKUP && (
                     <View style={styles.otpRow}>
                         <TextInput
                             style={styles.otpInput}
@@ -172,30 +217,35 @@ const RideBottomSheet = forwardRef((props, ref) => {
                         <CommonButton
                             title="Submit"
                             textColor={colors.whiteColor}
-                            style={[
-                                styles.submitButton,
-                                {
-                                    backgroundColor:
-                                        status === STATUS.START_TRIP
-                                            ? colors.primaryColor
-                                            : colors.secondaryColor,
-                                },
-                            ]} />
+                            style={styles.submitButton}
+                            onPress={handleSubmitOtp}
+                        />
                     </View>
                 )}
 
                 {/* Main Status Button */}
                 {status !== STATUS.FINISH_TRIP && (
-                    status === STATUS.ARRIVE_TO_PICKUP ? (
+                    isPickupStage ? (
                         <TouchableOpacity
                             style={styles.arrivedButton}
                             onPress={handleMainButton}
                             activeOpacity={0.85}
+                            disabled={!pickupLegCompleted}
                         >
                             <Text style={styles.arrivedText}>
-                                Arrived at Pick-up
+                                {buttonTitle}
                             </Text>
                         </TouchableOpacity>
+                    ) : isTripActive ? (
+                        <CommonButton
+                            title={buttonTitle}
+                            textColor={colors.primaryColor}
+                            style={{
+                                backgroundColor: colors.secondaryColor,
+                            }}
+                            onPress={handleMainButton}
+                            disabled
+                        />
                     ) : (
                         <CommonButton
                             title={buttonTitle}
@@ -217,7 +267,7 @@ const RideBottomSheet = forwardRef((props, ref) => {
                                     <MaterialDesignIcons
                                         name="person-outline"
                                         size={28}
-                                        color={colors.greyColor}
+                                        color={colors.primaryColor}
                                     />
                                 </View>
 
@@ -248,10 +298,10 @@ const RideBottomSheet = forwardRef((props, ref) => {
                         </Text>
 
                         <Text style={styles.locationText}>
-                            Sam Nujoma Dr, Klein Windhoek, Namibia
+                            {dropoffAddress || 'Sam Nujoma Dr, Klein Windhoek, Namibia'}
                         </Text>
 
-                        <View style={{ marginTop: 30 }}>
+                        {/* <View style={{ marginTop: 30 }}>
                             <View style={styles.progressHeader}>
                                 <Text style={styles.progressTitle}>
                                     Trip in Progress
@@ -265,7 +315,7 @@ const RideBottomSheet = forwardRef((props, ref) => {
                             <View style={styles.progressTrack}>
                                 <View style={styles.progressFill} />
                             </View>
-                        </View>
+                        </View> */}
 
                         <CommonButton
                             title="Finish Trip"
@@ -294,7 +344,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: SHEET_HEIGHT,
-        backgroundColor: colors.cardWhiteOpacity,
+        backgroundColor: colors.primaryColorOpacity,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 20,
@@ -309,7 +359,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 4,
         borderRadius: 2,
-        backgroundColor: colors.lightGreyColor,
+        backgroundColor: colors.primaryColor,
         alignSelf: 'center',
         marginTop: 12,
         marginBottom: 20,
@@ -324,6 +374,13 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '400',
         color: colors.lightGreyColor,
+        marginBottom: 8,
+    },
+    helperText: {
+        fontSize: 13,
+        fontWeight: '400',
+        color: colors.whiteColor,
+        opacity: 0.8,
         marginBottom: 20,
     },
     actionRow: {
@@ -369,7 +426,7 @@ const styles = StyleSheet.create({
         width: 130,
         paddingHorizontal: 28,
         borderRadius: 30,
-        backgroundColor: colors.secondaryColor, // your yellow/orange color
+        backgroundColor: colors.secondaryColor,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -392,7 +449,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: colors.secondaryColor,
     },
-
 
     finishContainer: {
         marginTop: 10,
@@ -440,9 +496,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
+    // Was 'rgba(255,255,255,0.4)' — that stark white line was the only
+    // divider anywhere in the sheet and didn't match the purple theme.
+    // Toned down so it separates content without looking like a stray
+    // white bar plastered in the middle of the sheet.
     divider: {
         height: 1,
-        backgroundColor: 'rgba(255,255,255,0.4)',
+        backgroundColor: 'rgba(255,255,255,0.15)',
         marginVertical: 16,
     },
 

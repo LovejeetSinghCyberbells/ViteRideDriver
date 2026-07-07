@@ -28,8 +28,8 @@ const Stack = createNativeStackNavigator();
 
 // Stack Navigators
 export const HomeNavigator = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="HomeScreen">
-        <Stack.Screen name="HomeScreen" component={HomeScreen} />
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="HomeMainScreen">
+        <Stack.Screen name="HomeMainScreen" component={HomeScreen} />
         <Stack.Screen name="RideScreen" component={RideScreen} />
     </Stack.Navigator>
 );
@@ -129,7 +129,7 @@ const BottomTabs = () => {
                         </Text>
                     ),
                     tabBarStyle: (() => {
-                        const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
+                        const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeMainScreen';
                         if (routeName === 'RideScreen') {
                             return { display: 'none' };
                         }

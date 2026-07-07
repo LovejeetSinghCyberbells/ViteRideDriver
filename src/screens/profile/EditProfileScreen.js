@@ -101,10 +101,10 @@ export default function EditProfileScreen({ navigation, route }) {
             showError('Please enter your phone number.');
             return false;
         }
-        if (!profileImage) {
-            showError('Please add a profile photo.');
-            return false;
-        }
+        // if (!profileImage) {
+        //     showError('Please add a profile photo.');
+        //     return false;
+        // }
         return true;
     };
 

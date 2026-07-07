@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState ,useCallback} from 'react';
 import {
     StyleSheet,
     View,
@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native'; 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
@@ -90,6 +91,11 @@ export default function ProfileScreen({ navigation }) {
         fetchProfile();
     }, []);
 
+    useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
 
     const handleLogout = async () => {
         try {

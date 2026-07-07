@@ -17,7 +17,8 @@ const colors = {
     yellowColor: '#FFBC00',
     lightYellowColor: '#F3F4F6',
     appSettingCardWhiteOpacity: 'rgba(222, 239, 255, 0.42)',
-    darkGrey : '#4A5565'
+    darkGrey : '#4A5565',
+    primaryColorOpacity: 'rgba(49, 30, 153, 0.5)'
 }
 
 export default colors;
