@@ -19,7 +19,6 @@ export default function CommonButton({
             style={[
                 styles.container,
                 { backgroundColor: color },
-                disabled && styles.disabled,
                 style,
             ]}
             onPress={onPress}
@@ -54,8 +53,5 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         textAlign: 'center',
-    },
-    disabled: {
-        opacity: 0.6,
     },
 });

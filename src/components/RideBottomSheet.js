@@ -1,9 +1,18 @@
-import React, { forwardRef, useImperativeHandle, useCallback, useRef, useState, useEffect } from 'react';
+import React, {
+    forwardRef,
+    useImperativeHandle,
+    useCallback,
+    useRef,
+    useState,
+    useEffect,
+} from 'react';
 import {
     Animated,
     Dimensions,
     Easing,
+    Keyboard,
     Modal,
+    Platform,
     Pressable,
     StyleSheet,
     Text,
@@ -16,8 +25,11 @@ import colors from '../common/Colors';
 import CommonButton from './CommonButton';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.42;
+const OFFSCREEN_Y = SCREEN_HEIGHT;
+const MAX_SHEET_HEIGHT = SCREEN_HEIGHT * 0.6;
+const SHEET_PADDING_BOTTOM = 30;
 const ANIMATION_DURATION = 300;
+const OTP_LENGTH = 6;
 
 const STATUS = {
     ARRIVE_TO_PICKUP: 'arriveToPickUp',
@@ -25,6 +37,17 @@ const STATUS = {
     TRIP_IN_PROGRESS: 'tripInProgress',
     FINISH_TRIP: 'finishTrip',
 };
+
+const STEPS = [
+    { key: STATUS.ARRIVE_TO_PICKUP, label: 'Pickup' },
+    { key: STATUS.ARRIVED_AT_PICKUP, label: 'Verify' },
+    { key: STATUS.TRIP_IN_PROGRESS, label: 'En route' },
+    { key: STATUS.FINISH_TRIP, label: 'Done' },
+];
+const STEP_INDEX = STEPS.reduce(
+    (acc, step, i) => ({ ...acc, [step.key]: i }),
+    {},
+);
 
 const RideBottomSheet = forwardRef((props, ref) => {
     const {
@@ -45,20 +68,51 @@ const RideBottomSheet = forwardRef((props, ref) => {
     const [otp, setOtp] = useState('');
     const [status, setStatus] = useState(STATUS.ARRIVE_TO_PICKUP);
     const [buttonTitle, setButtonTitle] = useState('Arrived at Pick-up');
+    const [measuredContentHeight, setMeasuredContentHeight] = useState(null);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [otpKey, setOtpKey] = useState(0);
+
+    // Keyboard height tracking
+    useEffect(() => {
+        const showEvent =
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent =
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvent, e => {
+            setKeyboardHeight(e.endCoordinates?.height ?? 0);
+        });
+        const hideSub = Keyboard.addListener(hideEvent, () =>
+            setKeyboardHeight(0),
+        );
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
+
     const isPickupStage = status === STATUS.ARRIVE_TO_PICKUP;
     const isOtpStage = status === STATUS.ARRIVED_AT_PICKUP;
-    const isTripActive = status === STATUS.TRIP_IN_PROGRESS || status === STATUS.FINISH_TRIP;
+    const isTripActive =
+        status === STATUS.TRIP_IN_PROGRESS || status === STATUS.FINISH_TRIP;
+
     const sheetTitle = isTripActive ? 'Drop-off Location' : 'Pick-up Location';
-    const sheetAddress = isTripActive ? dropoffAddress || 'Sam Nujoma Dr, Klein Windhoek, Namibia' : pickupAddress || 'No address provided';
+    const sheetAddress = isTripActive
+        ? dropoffAddress || 'Sam Nujoma Dr, Klein Windhoek, Namibia'
+        : pickupAddress || 'No address provided';
     const helperText = isOtpStage
-        ? 'Enter passenger OTP to start the trip.'
+        ? 'Enter the passenger OTP to start the trip.'
         : isTripActive
             ? 'Trip is in progress. Reach the destination and finish the ride.'
             : 'Arriving at the pickup point.';
+    const activeStepIndex = STEP_INDEX[status] ?? 0;
 
-    const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+    const translateY = useRef(new Animated.Value(OFFSCREEN_Y)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
+    const otpInputRef = useRef(null);
 
+    // Sync status from parent props
     useEffect(() => {
         if (tripCompleted) {
             setStatus(STATUS.FINISH_TRIP);
@@ -66,44 +120,59 @@ const RideBottomSheet = forwardRef((props, ref) => {
         } else if (tripStarted) {
             setStatus(STATUS.TRIP_IN_PROGRESS);
             setButtonTitle('Trip in Progress');
-        } else if (pickupLegCompleted) {
-            setStatus(STATUS.ARRIVE_TO_PICKUP);
-            setButtonTitle('Arrived at Pick-up');
         }
     }, [pickupLegCompleted, tripStarted, tripCompleted]);
 
-    useImperativeHandle(ref, () => ({
-        open: animateIn,
-        close: animateOut,
-    }), [animateIn, animateOut]);
+    // Focus OTP input reliably when we enter OTP stage
+    useEffect(() => {
+        if (status === STATUS.ARRIVED_AT_PICKUP && visible) {
+            const timer = setTimeout(() => {
+                if (otpInputRef.current) {
+                    otpInputRef.current.focus();
+                }
+            }, 450);
+            return () => clearTimeout(timer);
+        }
+    }, [status, visible, otpKey]);
 
-    const animateOut = useCallback((callback) => {
-        Animated.parallel([
-            Animated.timing(translateY, {
-                toValue: SHEET_HEIGHT,
-                duration: ANIMATION_DURATION,
-                easing: Easing.in(Easing.cubic),
-                useNativeDriver: true,
-            }),
-            Animated.timing(backdropAnim, {
-                toValue: 0,
-                duration: ANIMATION_DURATION,
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            setVisible(false);
-            setOtp('');
-            callback?.();
-        });
-    }, [translateY, backdropAnim]);
+    const animateOut = useCallback(
+        callback => {
+            // Block closing while OTP is required or trip is active
+            if (
+                status === STATUS.ARRIVED_AT_PICKUP ||
+                status === STATUS.TRIP_IN_PROGRESS
+            ) {
+                return;
+            }
+
+            Animated.parallel([
+                Animated.timing(translateY, {
+                    toValue: OFFSCREEN_Y,
+                    duration: ANIMATION_DURATION,
+                    easing: Easing.in(Easing.cubic),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(backdropAnim, {
+                    toValue: 0,
+                    duration: ANIMATION_DURATION,
+                    useNativeDriver: true,
+                }),
+            ]).start(() => {
+                setVisible(false);
+                setOtp('');
+                callback?.();
+            });
+        },
+        [translateY, backdropAnim, status],
+    );
 
     const animateIn = useCallback(() => {
         setVisible(true);
         setOtp('');
-        setStatus(STATUS.ARRIVE_TO_PICKUP);
-        setButtonTitle('Arrived at Pick-up');
+        setMeasuredContentHeight(null);
+        setOtpKey(k => k + 1);
 
-        translateY.setValue(SHEET_HEIGHT);
+        translateY.setValue(OFFSCREEN_Y);
         backdropAnim.setValue(0);
 
         Animated.parallel([
@@ -121,25 +190,31 @@ const RideBottomSheet = forwardRef((props, ref) => {
         ]).start();
     }, [translateY, backdropAnim]);
 
+    useImperativeHandle(
+        ref,
+        () => ({
+            open: animateIn,
+            close: animateOut,
+        }),
+        [animateIn, animateOut],
+    );
+
     const backdropColor = backdropAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.5)'],
     });
 
-    // Main Button Handler
     const handleMainButton = () => {
         if (status === STATUS.ARRIVE_TO_PICKUP) {
             setStatus(STATUS.ARRIVED_AT_PICKUP);
             setButtonTitle('Start Trip');
             onArrivedAtPickup?.();
+            setOtpKey(k => k + 1);
             return;
         }
 
         if (status === STATUS.ARRIVED_AT_PICKUP) {
-            if (otp.length !== 6) {
-                return;
-            }
-
+            if (otp.length !== OTP_LENGTH) return;
             onSubmitOtp?.(otp);
             onTripStart?.();
             setStatus(STATUS.TRIP_IN_PROGRESS);
@@ -154,15 +229,37 @@ const RideBottomSheet = forwardRef((props, ref) => {
     };
 
     const handleSubmitOtp = () => {
-        if (otp.length !== 6) {
-            return;
-        }
-
+        if (otp.length !== OTP_LENGTH) return;
         onSubmitOtp?.(otp);
         onTripStart?.();
         setStatus(STATUS.TRIP_IN_PROGRESS);
         setButtonTitle('Trip in Progress');
     };
+
+    const handleOtpChange = text =>
+        setOtp(text.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH));
+
+    const focusOtp = useCallback(() => {
+        // Force blur then focus – helps on some Android devices
+        otpInputRef.current?.blur();
+        setTimeout(() => {
+            otpInputRef.current?.focus();
+        }, 50);
+    }, []);
+
+    const handleContentLayout = useCallback(event => {
+        const measured = event.nativeEvent.layout.height;
+        setMeasuredContentHeight(prev => (prev === measured ? prev : measured));
+    }, []);
+
+    const sheetHeightStyle = measuredContentHeight
+        ? {
+            height: Math.min(
+                measuredContentHeight + SHEET_PADDING_BOTTOM,
+                MAX_SHEET_HEIGHT,
+            ),
+        }
+        : { height: MAX_SHEET_HEIGHT };
 
     return (
         <Modal
@@ -171,164 +268,284 @@ const RideBottomSheet = forwardRef((props, ref) => {
             animationType="none"
             statusBarTranslucent
             onRequestClose={animateOut}
-            style={{ backgroundColor: colors.primaryColorOpacity }}
         >
-            <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: backdropColor }]}>
-                <Pressable style={StyleSheet.absoluteFillObject} onPress={animateOut} />
-            </Animated.View>
+            <View style={styles.container}>
+                <Animated.View
+                    style={[
+                        StyleSheet.absoluteFillObject,
+                        { backgroundColor: backdropColor },
+                    ]}
+                >
+                    {/* Only allow backdrop dismiss on the first stage */}
+                    <Pressable
+                        style={StyleSheet.absoluteFillObject}
+                        onPress={
+                            status === STATUS.ARRIVE_TO_PICKUP
+                                ? animateOut
+                                : undefined
+                        }
+                    />
+                </Animated.View>
 
-            <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-                <View style={styles.handleBar} />
+                <Animated.View
+                    style={[
+                        styles.sheet,
+                        sheetHeightStyle,
+                        {
+                            bottom: keyboardHeight,
+                            transform: [{ translateY }],
+                        },
+                    ]}
+                >
+                    <View onLayout={handleContentLayout}>
+                        <View style={styles.handleBar} />
 
-                {status !== STATUS.FINISH_TRIP && (
-                    <>
-                        <Text style={styles.title}>{sheetTitle}</Text>
-                        <Text style={styles.address}>{sheetAddress}</Text>
-                        <Text style={styles.helperText}>{helperText}</Text>
-
-                        {!isTripActive && (
-                            <View style={styles.actionRow}>
-                                <TouchableOpacity style={styles.actionButton} onPress={onCall} activeOpacity={0.8}>
-                                    <MaterialDesignIcons name="call" size={18} color={colors.blackColor} />
-                                    <Text style={styles.actionButtonText}>Call</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.actionButton} onPress={onMessage} activeOpacity={0.8}>
-                                    <MaterialDesignIcons name="chat-bubble-outline" size={18} color={colors.blackColor} />
-                                    <Text style={styles.actionButtonText}>Message</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </>
-                )}
-
-                {/* OTP Input - Show only after arriving */}
-                {status === STATUS.ARRIVED_AT_PICKUP && (
-                    <View style={styles.otpRow}>
-                        <TextInput
-                            style={styles.otpInput}
-                            placeholder="Enter OTP"
-                            placeholderTextColor="rgba(255,255,255,0.5)"
-                            value={otp}
-                            onChangeText={setOtp}
-                            keyboardType="number-pad"
-                            maxLength={6}
-                        />
-                        <CommonButton
-                            title="Submit"
-                            textColor={colors.whiteColor}
-                            style={styles.submitButton}
-                            onPress={handleSubmitOtp}
-                        />
-                    </View>
-                )}
-
-                {/* Main Status Button */}
-                {status !== STATUS.FINISH_TRIP && (
-                    isPickupStage ? (
-                        <TouchableOpacity
-                            style={styles.arrivedButton}
-                            onPress={handleMainButton}
-                            activeOpacity={0.85}
-                            disabled={!pickupLegCompleted}
-                        >
-                            <Text style={styles.arrivedText}>
-                                {buttonTitle}
-                            </Text>
-                        </TouchableOpacity>
-                    ) : isTripActive ? (
-                        <CommonButton
-                            title={buttonTitle}
-                            textColor={colors.primaryColor}
-                            style={{
-                                backgroundColor: colors.secondaryColor,
-                            }}
-                            onPress={handleMainButton}
-                            disabled
-                        />
-                    ) : (
-                        <CommonButton
-                            title={buttonTitle}
-                            textColor={colors.primaryColor}
-                            style={{
-                                backgroundColor: colors.secondaryColor,
-                            }}
-                            onPress={handleMainButton}
-                        />
-                    )
-                )}
-
-                {status === STATUS.FINISH_TRIP && (
-                    <View style={styles.finishContainer}>
-                        {/* Driver Header */}
-                        <View style={styles.finishHeader}>
-                            <View style={styles.driverInfo}>
-                                <View style={styles.avatar}>
-                                    <MaterialDesignIcons
-                                        name="person-outline"
-                                        size={28}
-                                        color={colors.primaryColor}
-                                    />
-                                </View>
-
-                                <View>
-                                    <Text style={styles.driverName}>Finish</Text>
-                                    <Text style={styles.vehicleText}>
-                                        🚕 ABC 1234
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <TouchableOpacity
-                                style={styles.callCircle}
-                                onPress={onCall}
-                            >
-                                <MaterialDesignIcons
-                                    name="call"
-                                    size={24}
-                                    color={colors.primaryColor}
-                                />
-                            </TouchableOpacity>
+                        {/* Stepper */}
+                        <View style={styles.stepperRow}>
+                            {STEPS.map((step, index) => {
+                                const isComplete = index < activeStepIndex;
+                                const isActive = index === activeStepIndex;
+                                return (
+                                    <React.Fragment key={step.key}>
+                                        <View style={styles.stepperItem}>
+                                            <View
+                                                style={[
+                                                    styles.stepDot,
+                                                    (isComplete || isActive) &&
+                                                    styles.stepDotFilled,
+                                                ]}
+                                            >
+                                                {isComplete ? (
+                                                    <MaterialDesignIcons
+                                                        name="check"
+                                                        size={12}
+                                                        color={colors.primaryColor}
+                                                    />
+                                                ) : (
+                                                    <Text
+                                                        style={[
+                                                            styles.stepDotText,
+                                                            isActive &&
+                                                            styles.stepDotTextActive,
+                                                        ]}
+                                                    >
+                                                        {index + 1}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            <Text
+                                                style={[
+                                                    styles.stepLabel,
+                                                    isActive &&
+                                                    styles.stepLabelActive,
+                                                ]}
+                                            >
+                                                {step.label}
+                                            </Text>
+                                        </View>
+                                        {index < STEPS.length - 1 && (
+                                            <View
+                                                style={[
+                                                    styles.stepConnector,
+                                                    isComplete &&
+                                                    styles.stepConnectorFilled,
+                                                ]}
+                                            />
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
                         </View>
 
-                        <View style={styles.divider} />
+                        {status !== STATUS.FINISH_TRIP && (
+                            <>
+                                <Text style={styles.title}>{sheetTitle}</Text>
+                                <Text style={styles.address}>{sheetAddress}</Text>
+                                <Text style={styles.helperText}>{helperText}</Text>
 
-                        <Text style={styles.locationLabel}>
-                            Drop-off Location
-                        </Text>
+                                {!isTripActive && (
+                                    <View style={styles.actionRow}>
+                                        <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={onCall}
+                                            activeOpacity={0.8}
+                                        >
+                                            <MaterialDesignIcons
+                                                name="call"
+                                                size={18}
+                                                color={colors.blackColor}
+                                            />
+                                            <Text style={styles.actionButtonText}>
+                                                Call
+                                            </Text>
+                                        </TouchableOpacity>
 
-                        <Text style={styles.locationText}>
-                            {dropoffAddress || 'Sam Nujoma Dr, Klein Windhoek, Namibia'}
-                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={onMessage}
+                                            activeOpacity={0.8}
+                                        >
+                                            <MaterialDesignIcons
+                                                name="chat-bubble-outline"
+                                                size={18}
+                                                color={colors.blackColor}
+                                            />
+                                            <Text style={styles.actionButtonText}>
+                                                Message
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </>
+                        )}
 
-                        {/* <View style={{ marginTop: 30 }}>
-                            <View style={styles.progressHeader}>
-                                <Text style={styles.progressTitle}>
-                                    Trip in Progress
+                        {/* OTP Section */}
+                        {status === STATUS.ARRIVED_AT_PICKUP && (
+                            <View style={styles.otpSection}>
+                                <Pressable style={styles.otpBoxRow} onPress={focusOtp}>
+                                    {/* Visual boxes only – no TextInput inside this flex row */}
+                                    <View style={styles.otpBoxesContainer}>
+                                        {Array.from({ length: OTP_LENGTH }).map((_, i) => {
+                                            const filled = otp.length > i;
+                                            const isCursor = otp.length === i;
+                                            return (
+                                                <View
+                                                    key={i}
+                                                    style={[
+                                                        styles.otpBox,
+                                                        filled && styles.otpBoxFilled,
+                                                        isCursor && styles.otpBoxCursor,
+                                                    ]}
+                                                >
+                                                    <Text style={styles.otpBoxText}>
+                                                        {otp[i] ?? ''}
+                                                    </Text>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+
+                                    {/* Absolute overlay – does NOT participate in flex layout */}
+                                    <TextInput
+                                        key={otpKey}
+                                        ref={otpInputRef}
+                                        value={otp}
+                                        onChangeText={handleOtpChange}
+                                        keyboardType="number-pad"
+                                        maxLength={OTP_LENGTH}
+                                        style={styles.otpInputOverlay}
+                                        autoFocus={true}
+                                        caretHidden={true}
+                                        showSoftInputOnFocus={true}
+                                        importantForAutofill="no"
+                                        contextMenuHidden={true}
+                                        selectTextOnFocus={false}
+                                        blurOnSubmit={false}
+                                    />
+                                </Pressable>
+
+                                <CommonButton
+                                    title="Submit"
+                                    textColor={colors.whiteColor}
+                                    style={[
+                                        styles.submitButton,
+                                        otp.length !== OTP_LENGTH && styles.submitButtonDisabled,
+                                    ]}
+                                    onPress={handleSubmitOtp}
+                                    disabled={otp.length !== OTP_LENGTH}
+                                />
+                            </View>
+                        )}
+
+                        {/* Main Status Button */}
+                        {status !== STATUS.FINISH_TRIP && !isOtpStage && (
+                            isPickupStage ? (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.arrivedButton,
+                                        !pickupLegCompleted &&
+                                        styles.arrivedButtonDisabled,
+                                    ]}
+                                    onPress={handleMainButton}
+                                    activeOpacity={0.85}
+                                    disabled={!pickupLegCompleted}
+                                >
+                                    <Text style={styles.arrivedText}>
+                                        {buttonTitle}
+                                    </Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={styles.progressBar}>
+                                    <MaterialDesignIcons
+                                        name="directions-car"
+                                        size={18}
+                                        color={colors.whiteColor}
+                                    />
+                                    <Text style={styles.progressBarText}>
+                                        {buttonTitle}
+                                    </Text>
+                                </View>
+                            )
+                        )}
+
+                        {/* Finish Trip UI */}
+                        {status === STATUS.FINISH_TRIP && (
+                            <View style={styles.finishContainer}>
+                                <View style={styles.finishHeader}>
+                                    <View style={styles.driverInfo}>
+                                        <View style={styles.avatar}>
+                                            <MaterialDesignIcons
+                                                name="person-outline"
+                                                size={28}
+                                                color={colors.primaryColor}
+                                            />
+                                        </View>
+                                        <View>
+                                            <Text style={styles.driverName}>
+                                                Finish
+                                            </Text>
+                                            <Text style={styles.vehicleText}>
+                                                🚕 ABC 1234
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={styles.callCircle}
+                                        onPress={onCall}
+                                    >
+                                        <MaterialDesignIcons
+                                            name="call"
+                                            size={24}
+                                            color={colors.primaryColor}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.divider} />
+
+                                <Text style={styles.locationLabel}>
+                                    Drop-off Location
+                                </Text>
+                                <Text style={styles.locationText}>
+                                    {dropoffAddress ||
+                                        'Sam Nujoma Dr, Klein Windhoek, Namibia'}
                                 </Text>
 
-                                <Text style={styles.progressTime}>
-                                    5 min
-                                </Text>
+                                <CommonButton
+                                    title="Finish Trip"
+                                    textColor={colors.primaryColor}
+                                    style={{
+                                        backgroundColor: colors.secondaryColor,
+                                        marginTop: 35,
+                                    }}
+                                    onPress={handleMainButton}
+                                />
                             </View>
-
-                            <View style={styles.progressTrack}>
-                                <View style={styles.progressFill} />
-                            </View>
-                        </View> */}
-
-                        <CommonButton
-                            title="Finish Trip"
-                            textColor={colors.primaryColor}
-                            style={{
-                                backgroundColor: colors.secondaryColor,
-                                marginTop: 35,
-                            }}
-                            onPress={handleMainButton}
-                        />
+                        )}
                     </View>
-                )}
-            </Animated.View>
+                </Animated.View>
+            </View>
         </Modal>
     );
 });
@@ -338,13 +555,18 @@ RideBottomSheet.displayName = 'RideBottomSheet';
 export default RideBottomSheet;
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        alignItems: 'flex-end',
+    },
     sheet: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        height: SHEET_HEIGHT,
-        backgroundColor: colors.primaryColorOpacity,
+        maxHeight: MAX_SHEET_HEIGHT,
+        backgroundColor: colors.primaryColor,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 20,
@@ -359,11 +581,66 @@ const styles = StyleSheet.create({
         width: 40,
         height: 4,
         borderRadius: 2,
-        backgroundColor: colors.primaryColor,
+        backgroundColor: 'rgba(255,255,255,0.35)',
         alignSelf: 'center',
         marginTop: 12,
-        marginBottom: 20,
+        marginBottom: 18,
     },
+
+    // Stepper
+    stepperRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 18,
+    },
+    stepperItem: {
+        alignItems: 'center',
+        width: 54,
+    },
+    stepDot: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.35)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+    },
+    stepDotFilled: {
+        backgroundColor: colors.secondaryColor,
+        borderColor: colors.secondaryColor,
+    },
+    stepDotText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.6)',
+    },
+    stepDotTextActive: {
+        color: colors.primaryColor,
+    },
+    stepLabel: {
+        marginTop: 6,
+        fontSize: 11,
+        fontWeight: '500',
+        color: 'rgba(255,255,255,0.55)',
+        textAlign: 'center',
+    },
+    stepLabelActive: {
+        color: colors.whiteColor,
+        fontWeight: '700',
+    },
+    stepConnector: {
+        flex: 1,
+        height: 1.5,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        marginTop: 12,
+        marginHorizontal: -4,
+    },
+    stepConnectorFilled: {
+        backgroundColor: colors.secondaryColor,
+    },
+
     title: {
         fontSize: 18,
         fontWeight: '700',
@@ -404,37 +681,63 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: colors.blackColor,
     },
-    otpRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 20,
+
+    // --- OTP ---
+    otpSection: {
+        marginBottom: 12,
     },
-    otpInput: {
-        flex: 1,
+    otpBoxRow: {
+        height: 52,                 // fixed height
+        marginBottom: 16,
+        position: 'relative',
+    },
+    otpBoxesContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         height: 52,
-        borderRadius: 30,
+    },
+    otpBox: {
+        width: 44,
+        height: 52,
+        borderRadius: 12,
         borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        flexShrink: 0,              // never shrink
+    },
+    otpBoxFilled: {
+        borderColor: colors.secondaryColor,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+    },
+    otpBoxCursor: {
         borderColor: colors.whiteColor,
-        paddingHorizontal: 20,
-        fontSize: 15,
+    },
+    otpBoxText: {
+        fontSize: 20,
+        fontWeight: '700',
         color: colors.whiteColor,
+    },
+    otpInputOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        opacity: 0.01,
+        color: 'transparent',
         backgroundColor: 'transparent',
+        zIndex: 10,
     },
     submitButton: {
         height: 52,
-        width: 130,
-        paddingHorizontal: 28,
         borderRadius: 30,
         backgroundColor: colors.secondaryColor,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    submitText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: colors.whiteColor,
+    submitButtonDisabled: {
+        opacity: 0.4,
     },
+
     arrivedButton: {
         height: 52,
         borderRadius: 30,
@@ -444,27 +747,45 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: 'transparent',
     },
+    arrivedButtonDisabled: {
+        borderColor: 'rgba(255,255,255,0.25)',
+    },
     arrivedText: {
         fontSize: 15,
         fontWeight: '600',
         color: colors.secondaryColor,
     },
-
-    finishContainer: {
-        marginTop: 10,
+    progressBar: {
+        height: 52,
+        borderRadius: 30,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+    },
+    progressBarText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: colors.whiteColor,
+        opacity: 0.85,
     },
 
+    // Finish
+    finishContainer: {
+        marginTop: 4,
+    },
     finishHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-
     driverInfo: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-
     avatar: {
         width: 60,
         height: 60,
@@ -474,19 +795,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 12,
     },
-
     driverName: {
         fontSize: 22,
         fontWeight: '600',
         color: colors.whiteColor,
     },
-
     vehicleText: {
         fontSize: 16,
         color: colors.lightGreyColor,
         marginTop: 4,
     },
-
     callCircle: {
         width: 70,
         height: 70,
@@ -495,54 +813,18 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-
-    // Was 'rgba(255,255,255,0.4)' — that stark white line was the only
-    // divider anywhere in the sheet and didn't match the purple theme.
-    // Toned down so it separates content without looking like a stray
-    // white bar plastered in the middle of the sheet.
     divider: {
         height: 1,
         backgroundColor: 'rgba(255,255,255,0.15)',
         marginVertical: 16,
     },
-
     locationLabel: {
         fontSize: 15,
         color: colors.lightGreyColor,
         marginBottom: 6,
     },
-
     locationText: {
         fontSize: 17,
         color: colors.whiteColor,
-    },
-
-    progressHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-    },
-
-    progressTitle: {
-        fontSize: 15,
-        color: colors.lightGreyColor,
-    },
-
-    progressTime: {
-        fontSize: 16,
-        color: colors.whiteColor,
-    },
-
-    progressTrack: {
-        height: 10,
-        borderRadius: 10,
-        backgroundColor: 'rgba(255,255,255,0.3)',
-        overflow: 'hidden',
-    },
-
-    progressFill: {
-        width: '60%',
-        height: '100%',
-        backgroundColor: colors.whiteColor,
     },
 });

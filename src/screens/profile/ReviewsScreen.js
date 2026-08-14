@@ -60,7 +60,7 @@ export default function ReviewsScreen({ navigation }) {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <MaterialDesignIcons name="arrow-back-ios" size={24} color={colors.whiteColor} />
                 </TouchableOpacity>
-                <Text style={styles.screenTitle}>My Details</Text>
+                <Text style={styles.screenTitle}>Reviews</Text>
                 <View style={styles.headerSpacer} />
             </View>
 

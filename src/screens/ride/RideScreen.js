@@ -31,6 +31,13 @@ const FOLLOW_ZOOM = 15;
 const FOLLOW_PITCH = 45;
 const FOLLOW_UPDATE_INTERVAL_MS = 550;
 
+const PHASE_CONFIG = {
+    pickup: { label: 'Heading to pickup', icon: 'navigation' },
+    verify: { label: 'Verifying passenger', icon: 'verified-user' },
+    trip: { label: 'Trip in progress', icon: 'directions-car' },
+    complete: { label: 'Trip complete', icon: 'check-circle' },
+};
+
 const toGeoCoord = p => [p.longitude, p.latitude];
 
 const haversineKm = (lat1, lon1, lat2, lon2) => {
@@ -40,8 +47,8 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
     const a =
         Math.sin(dLat / 2) ** 2 +
         Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) ** 2;
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
@@ -57,7 +64,10 @@ export default function RideScreen({ navigation, route }) {
     const cameraRef = useRef(null);
     const [mapLoaded, setMapLoaded] = useState(false);
 
-    const dropoffCoordinates = useMemo(() => dropOffRoute?.coordinates ?? [], [dropOffRoute?.coordinates]);
+    const dropoffCoordinates = useMemo(
+        () => dropOffRoute?.coordinates ?? [],
+        [dropOffRoute?.coordinates],
+    );
     const duration = dropOffRoute?.duration ?? 3;
 
     const cameraInitDone = useRef(false);
@@ -77,8 +87,11 @@ export default function RideScreen({ navigation, route }) {
         const startCoord = current
             ? toGeoCoord(current)
             : pickup
-                ? [pickup.longitude + DRIVER_START_OFFSET.lonDelta, pickup.latitude + DRIVER_START_OFFSET.latDelta]
-                : null;
+              ? [
+                    pickup.longitude + DRIVER_START_OFFSET.lonDelta,
+                    pickup.latitude + DRIVER_START_OFFSET.latDelta,
+                ]
+              : null;
 
         if (!startCoord || !pickupCoord) return null;
         return [startCoord, pickupCoord];
@@ -101,6 +114,7 @@ export default function RideScreen({ navigation, route }) {
     const handlePickupLegComplete = useCallback(() => {
         setPickupLegComplete(true);
     }, []);
+
     const handleTripLegComplete = useCallback(() => {
         setTripCompleted(true);
     }, []);
@@ -108,7 +122,9 @@ export default function RideScreen({ navigation, route }) {
     useEffect(() => {
         if (tripStarted) {
             setShouldShowPickupRoute(false);
-            setActiveRouteCoordinates(dropoffCoordinates?.length ? dropoffCoordinates : toPickupCoordinates);
+            setActiveRouteCoordinates(
+                dropoffCoordinates?.length ? dropoffCoordinates : toPickupCoordinates,
+            );
         } else {
             setShouldShowPickupRoute(true);
             setActiveRouteCoordinates(toPickupCoordinates);
@@ -119,7 +135,11 @@ export default function RideScreen({ navigation, route }) {
         carPosition: carPositionToPickup,
         carBearing: carBearingToPickup,
         etaMinutes: etaToPickupMinutes,
-    } = useCarAnimation(toPickupCoordinates, handlePickupLegComplete, pickupLegDurationMinutes);
+    } = useCarAnimation(
+        toPickupCoordinates,
+        handlePickupLegComplete,
+        pickupLegDurationMinutes,
+    );
 
     const {
         carPosition: carPositionTrip,
@@ -129,12 +149,30 @@ export default function RideScreen({ navigation, route }) {
     } = useCarAnimation(
         tripStarted ? dropoffCoordinates : null,
         handleTripLegComplete,
-        duration
+        duration,
     );
 
     const activeCarPosition = tripStarted ? carPositionTrip : carPositionToPickup;
     const activeCarBearing = tripStarted ? carBearingTrip : carBearingToPickup;
     const shouldRenderPickupInfo = !tripStarted && !pickupLegComplete;
+
+    const phase = tripCompleted
+        ? 'complete'
+        : tripStarted
+          ? 'trip'
+          : arrivedAtPickup
+            ? 'verify'
+            : 'pickup';
+    const phaseInfo = PHASE_CONFIG[phase];
+
+    const showEtaChip =
+        (shouldRenderPickupInfo && !arrivedAtPickup && activeCarPosition) ||
+        (tripStarted && !tripCompleted);
+    const etaMinutes = tripStarted ? tripEtaMinutes : etaToPickupMinutes;
+    const etaDistanceKm = tripStarted
+        ? (dropOffRoute?.distance ?? 0)
+        : distanceToPickupKm;
+    const etaLabel = tripStarted ? 'To drop-off' : 'To pick-up';
 
     const pickupSheetRef = useRef(null);
     const lastFollowUpdateRef = useRef(0);
@@ -164,7 +202,6 @@ export default function RideScreen({ navigation, route }) {
         }
     }, [activeCarPosition]);
 
-    // ── Smooth Live Follow Camera + Correct Vehicle Direction ───────────
     useEffect(() => {
         if (!mapLoaded || !activeCarPosition) return;
 
@@ -175,14 +212,16 @@ export default function RideScreen({ navigation, route }) {
         cameraRef.current?.easeTo({
             center: activeCarPosition,
             zoom: FOLLOW_ZOOM,
-            bearing: activeCarBearing,        // Map rotation
+            bearing: activeCarBearing,
             pitch: FOLLOW_PITCH,
             duration: 400,
         });
     }, [activeCarPosition, activeCarBearing, mapLoaded]);
 
     const routeGeoJson = useMemo(() => {
-        const legCoordinates = activeRouteCoordinates ?? (tripStarted ? dropoffCoordinates : toPickupCoordinates);
+        const legCoordinates =
+            activeRouteCoordinates ??
+            (tripStarted ? dropoffCoordinates : toPickupCoordinates);
         if (!legCoordinates || legCoordinates.length < 2) return null;
         return {
             type: 'Feature',
@@ -224,7 +263,7 @@ export default function RideScreen({ navigation, route }) {
                                             type="line"
                                             id="routeLineLayer"
                                             style={{
-                                                lineColor: '#2563eb',
+                                                lineColor: colors.primaryColor,
                                                 lineWidth: 6,
                                                 lineCap: 'round',
                                                 lineJoin: 'round',
@@ -236,22 +275,33 @@ export default function RideScreen({ navigation, route }) {
                             )}
 
                             {pickup && (
-                                <MarkerView coordinate={toGeoCoord(pickup)} anchor={{ x: 0.5, y: 1 }}>
+                                <MarkerView
+                                    coordinate={toGeoCoord(pickup)}
+                                    anchor={{ x: 0.5, y: 0.5 }}
+                                >
                                     <View style={styles.pickupMarker}>
+                                        <View style={styles.pickupMarkerRing} />
                                         <View style={styles.pickupMarkerDot} />
                                     </View>
                                 </MarkerView>
                             )}
 
                             {dropoff && (
-                                <MarkerView coordinate={toGeoCoord(dropoff)} anchor={{ x: 0.5, y: 1 }}>
+                                <MarkerView
+                                    coordinate={toGeoCoord(dropoff)}
+                                    anchor={{ x: 0.5, y: 1 }}
+                                >
                                     <View style={styles.dropoffMarker}>
-                                        <Text style={{ fontSize: 22 }}>📍</Text>
+                                        <MaterialDesignIcons
+                                            name="place"
+                                            size={20}
+                                            color={colors.whiteColor}
+                                        />
                                     </View>
+                                    <View style={styles.dropoffMarkerStem} />
                                 </MarkerView>
                             )}
 
-                            {/* Car Marker - bearing passed correctly */}
                             {activeCarPosition && (
                                 <CarAnimatedMarker
                                     position={activeCarPosition}
@@ -262,48 +312,61 @@ export default function RideScreen({ navigation, route }) {
                     )}
                 </MapView>
 
-                {shouldRenderPickupInfo && !arrivedAtPickup && activeCarPosition && (
-                    <View style={styles.infoBox}>
-                        <View style={styles.infoIcon}>
-                            <MaterialDesignIcons name='location-on' size={20} color={colors.primaryColor} />
-                        </View>
-                        <View style={styles.infoText}>
-                            <Text style={styles.infoTitle}>To Pick-up</Text>
-                            <Text style={styles.infoSubtitle}>
-                                {Math.max(1, Math.round(etaToPickupMinutes ?? 0))} min • {distanceToPickupKm.toFixed(1)} km
-                            </Text>
-                        </View>
+                <View style={styles.topOverlay} pointerEvents="none">
+                    <View style={styles.statusChip}>
+                        <MaterialDesignIcons
+                            name={phaseInfo.icon}
+                            size={16}
+                            color={colors.whiteColor}
+                        />
+                        <Text style={styles.statusChipText} numberOfLines={1}>
+                            {phaseInfo.label}
+                        </Text>
                     </View>
-                )}
 
-                {tripStarted && (
-                    <View style={styles.infoBox}>
-                        <View style={styles.infoIcon}>
-                            <MaterialDesignIcons name='location-on' size={20} color={colors.primaryColor} />
+                    {showEtaChip && (
+                        <View style={styles.etaChip}>
+                            <View style={styles.etaIconBadge}>
+                                <MaterialDesignIcons
+                                    name="location-on"
+                                    size={16}
+                                    color={colors.primaryColor}
+                                />
+                            </View>
+                            <View>
+                                <Text style={styles.etaTitle}>{etaLabel}</Text>
+                                <Text style={styles.etaSubtitle}>
+                                    {Math.max(1, Math.round(etaMinutes ?? 0))} min ·{' '}
+                                    {etaDistanceKm.toFixed(1)} km
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.infoText}>
-                            <Text style={styles.infoTitle}>To Drop-off</Text>
-                            <Text style={styles.infoSubtitle}>
-                                {Math.max(1, Math.round(tripEtaMinutes ?? 0))} min • {(dropOffRoute?.distance ?? 0).toFixed(1)} km
-                            </Text>
-                        </View>
-                    </View>
-                )}
+                    )}
+                </View>
 
                 <RideBottomSheet
                     ref={pickupSheetRef}
-                    pickupAddress={pickup?.address || 'Mandume Ndemufayo Ave, Windhoek'}
-                    dropoffAddress={dropoff?.address || 'Sam Nujoma Dr, Klein Windhoek, Namibia'}
+                    pickupAddress={
+                        pickup?.address || 'Mandume Ndemufayo Ave, Windhoek'
+                    }
+                    dropoffAddress={
+                        dropoff?.address ||
+                        'Sam Nujoma Dr, Klein Windhoek, Namibia'
+                    }
                     progressPct={tripProgressPct}
                     etaMinutes={tripEtaMinutes}
                     onCall={() => console.log('Calling passenger...')}
                     onMessage={() => console.log('Opening chat...')}
-                    onSubmitOtp={(otp) => console.log('OTP submitted:', otp)}
+                    onSubmitOtp={otp => console.log('OTP submitted:', otp)}
                     onArrivedAtPickup={() => setArrivedAtPickup(true)}
                     onTripStart={() => {
                         setTripStarted(true);
                         setShouldShowPickupRoute(false);
-                        setActiveRouteCoordinates(dropoffCoordinates?.length ? dropoffCoordinates : toPickupCoordinates);
+                        setActiveRouteCoordinates(
+                            dropoffCoordinates?.length
+                                ? dropoffCoordinates
+                                : toPickupCoordinates,
+                        );
                     }}
                     onTripFinished={() => navigation?.goBack()}
                     pickupLegCompleted={pickupLegComplete}
@@ -328,39 +391,114 @@ const styles = StyleSheet.create({
         flex: 1,
         minHeight: 500,
     },
-    infoBox: {
+
+    topOverlay: {
         position: 'absolute',
-        top: 60,
-        marginHorizontal: 20,
-        flexDirection: 'row',
-        gap: 20,
-        backgroundColor: colors.primaryColorOpacity,
-        padding: 20,
-        borderRadius: 15,
-        width: '90%',
+        top: 56,
+        left: 16,
+        right: 16,
+        gap: 10,
     },
-    infoIcon: {
-        width: 40,
-        height: 40,
-        backgroundColor: colors.appSettingCardWhiteOpacity,
-        borderRadius: 100,
+    statusChip: {
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: colors.primaryColor,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        shadowColor: colors.blackColor,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    statusChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.whiteColor,
+        maxWidth: 220,
+    },
+    etaChip: {
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: colors.primaryColor,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        paddingRight: 16,
+        borderRadius: 16,
+        shadowColor: colors.blackColor,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    etaIconBadge: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: colors.secondaryColor,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    infoText: {
-        justifyContent: 'center',
-        alignItems: 'flex-start',
+    etaTitle: {
+        fontSize: 11,
+        fontWeight: '500',
+        lineHeight: 15,
+        color: colors.whiteColor,
+        opacity: 0.75,
     },
-    infoTitle: {
+    etaSubtitle: {
         fontSize: 14,
-        fontWeight: '400',
-        lineHeight: 20,
+        fontWeight: '700',
+        lineHeight: 18,
         color: colors.whiteColor,
     },
-    infoSubtitle: {
-        fontSize: 16,
-        fontWeight: '400',
-        lineHeight: 24,
-        color: colors.whiteColor,
+
+    pickupMarker: {
+        width: 26,
+        height: 26,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pickupMarkerRing: {
+        position: 'absolute',
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: colors.secondaryColor,
+        opacity: 0.28,
+    },
+    pickupMarkerDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: colors.secondaryColor,
+        borderWidth: 2,
+        borderColor: colors.whiteColor,
+    },
+    dropoffMarker: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: colors.primaryColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: colors.whiteColor,
+        shadowColor: colors.blackColor,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    dropoffMarkerStem: {
+        alignSelf: 'center',
+        width: 2,
+        height: 8,
+        backgroundColor: colors.primaryColor,
     },
 });

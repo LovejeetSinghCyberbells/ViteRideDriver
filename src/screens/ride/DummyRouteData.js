@@ -1,7 +1,7 @@
 export const DUMMY_TO_PICKUP_ROUTE = {
     id: 0,
     distance: 3.1,
-    duration: 3,
+    duration: 1,
     coordinates: [
         [76.801842, 30.706071], [76.802087, 30.705821], [76.803042, 30.704896],
         [76.802429, 30.704151], [76.801587, 30.703147], [76.801372, 30.702852],
@@ -27,7 +27,7 @@ export const DUMMY_TO_PICKUP_ROUTE = {
 export const DUMMY_DROPOFF_ROUTE = {
     id: 0,
     distance: 10.4,
-    duration: 4,
+    duration: 2,
     coordinates: [
         [76.783327, 30.697323], [76.782772, 30.696983], [76.782557, 30.697224],
         [76.781461, 30.696533], [76.781086, 30.696296], [76.780725, 30.696697],
