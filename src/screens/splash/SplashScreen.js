@@ -8,10 +8,10 @@ export default function SplashScreen() {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            navigation.replace('OnboardingScreen'); // replace so user can't go back to splash
+            navigation.replace('OnboardingScreen'); 
         }, 3000); // 3 seconds
 
-        return () => clearTimeout(timer); // cleanup on unmount
+        return () => clearTimeout(timer); 
     }, []);
 
     return (
